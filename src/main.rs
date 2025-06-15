@@ -11,15 +11,19 @@ const ADDRESS: &str = "127.0.0.1:2323";
 #[tokio::main]
 async fn main() -> Result<()> {
     let listener = TcpListener::bind(ADDRESS).await?;
+    let app_state = Arc::new(AppState::from_file().unwrap_or(AppState::new()));
 
     loop {
         match listener.accept().await.context("Client connection failed") {
             Ok((stream, address)) => {
-                spawn(async move {
-                    let app_state = AppState::from_file().unwrap_or(AppState::new());
-                    let connection_manager = ConnectionManager::new(stream, Arc::new(app_state));
+                let app_state = Arc::clone(&app_state);
 
-                    connection_manager.run().await;
+                spawn(async move {
+                    let mut connection_manager = ConnectionManager::new(stream, app_state);
+
+                    if let Err(e) = connection_manager.run().await {
+                        eprintln!("{e}");
+                    }
                 });
             }
             Err(e) => eprintln!("{e}"),

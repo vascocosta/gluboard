@@ -1,7 +1,11 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::{fs::read_to_string, path::Path, sync::Arc};
-use tokio::{io::BufReader, net::TcpStream, sync::RwLock};
+use tokio::{
+    io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
+    net::TcpStream,
+    sync::RwLock,
+};
 
 const USERS_FILE: &str = "users.json";
 const MESSAGES_FILE: &str = "messages.json";
@@ -19,8 +23,35 @@ impl ConnectionManager {
         }
     }
 
-    pub async fn run(&self) {
-        todo!()
+    pub async fn run(&mut self) -> Result<()> {
+        self.welcome()
+            .await
+            .context("Could not send welcome message")?;
+
+        let mut input = String::new();
+
+        loop {
+            self.stream.read_line(&mut input).await?;
+            // TODO: Handle input by parsing it into a command.
+            input.clear();
+        }
+    }
+
+    async fn send(&mut self, data: &str) -> Result<()> {
+        self.stream
+            .get_mut()
+            .write_all(format!("{data}\r\n").as_bytes())
+            .await
+            .context("Could not send data to client")?;
+
+        self.stream
+            .flush()
+            .await
+            .context("Could not send data to client")
+    }
+
+    pub async fn welcome(&mut self) -> Result<()> {
+        self.send("WELCOME TO GLUON'S BBS").await
     }
 }
 
