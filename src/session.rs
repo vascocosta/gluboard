@@ -13,6 +13,7 @@ const MESSAGES_FILE: &str = "messages.json";
 pub struct ConnectionManager {
     stream: BufReader<TcpStream>,
     app_state: Arc<AppState>,
+    login_status: LoginStatus,
 }
 
 impl ConnectionManager {
@@ -20,17 +21,25 @@ impl ConnectionManager {
         Self {
             stream: BufReader::new(stream),
             app_state,
+            login_status: LoginStatus::Failure,
         }
     }
 
-    pub async fn login(&mut self) -> Result<bool> {
+    pub async fn login(&mut self) -> Result<LoginStatus> {
         let username = self.prompt("Username: ").await?;
         let password = self.prompt("Password: ").await?;
 
-        // TODO: Implement login validation logic.
-        let result = true;
+        let users = self.app_state.users.read().await;
+        let user: &User = users
+            .iter()
+            .filter(|u| u.username == username)
+            .collect::<Vec<&User>>()
+            .first()
+            .context("Could not find user")?;
 
-        Ok(result)
+        // TODO: Check if password is also valid.
+
+        Ok(LoginStatus::Success(user.username.clone()))
     }
 
     async fn prompt(&mut self, text: &str) -> Result<String> {
@@ -47,7 +56,16 @@ impl ConnectionManager {
             .await
             .context("Could not send welcome message")?;
 
-        // TODO: Call login logic here.
+        loop {
+            match self.login().await.context("Could not validate login") {
+                Ok(LoginStatus::Success(username)) => {
+                    self.login_status = LoginStatus::Success(username);
+                    break;
+                }
+                Ok(LoginStatus::Failure) => continue,
+                Err(e) => eprintln!("{e}"),
+            }
+        }
 
         let mut input = String::new();
 
@@ -132,4 +150,10 @@ struct Message {
     user: User,
     subject: String,
     body: String,
+}
+
+#[derive(Debug)]
+pub enum LoginStatus {
+    Success(String),
+    Failure,
 }
