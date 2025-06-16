@@ -23,10 +23,31 @@ impl ConnectionManager {
         }
     }
 
+    pub async fn login(&mut self) -> Result<bool> {
+        let username = self.prompt("Username: ").await?;
+        let password = self.prompt("Password: ").await?;
+
+        // TODO: Implement login validation logic.
+        let result = true;
+
+        Ok(result)
+    }
+
+    async fn prompt(&mut self, text: &str) -> Result<String> {
+        let mut answer = String::new();
+
+        self.write(text).await?;
+        self.stream.read_line(&mut answer).await?;
+
+        Ok(answer.trim().to_owned())
+    }
+
     pub async fn run(&mut self) -> Result<()> {
         self.welcome()
             .await
             .context("Could not send welcome message")?;
+
+        // TODO: Call login logic here.
 
         let mut input = String::new();
 
@@ -37,10 +58,10 @@ impl ConnectionManager {
         }
     }
 
-    async fn send(&mut self, data: &str) -> Result<()> {
+    async fn send(&mut self, data: &str, newline: bool) -> Result<()> {
         self.stream
             .get_mut()
-            .write_all(format!("{data}\r\n").as_bytes())
+            .write_all(format!("{data}{}", if newline { "\r\n" } else { "" }).as_bytes())
             .await
             .context("Could not send data to client")?;
 
@@ -51,7 +72,15 @@ impl ConnectionManager {
     }
 
     pub async fn welcome(&mut self) -> Result<()> {
-        self.send("WELCOME TO GLUON'S BBS").await
+        self.writeln("WELCOME TO THIS BBS").await
+    }
+
+    async fn write(&mut self, data: &str) -> Result<()> {
+        self.send(data, false).await
+    }
+
+    async fn writeln(&mut self, data: &str) -> Result<()> {
+        self.send(data, true).await
     }
 }
 
