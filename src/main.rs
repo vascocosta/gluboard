@@ -18,6 +18,8 @@ async fn main() -> Result<()> {
             Ok((stream, address)) => {
                 let app_state = Arc::clone(&app_state);
 
+                println!("Connection from: {address}");
+
                 spawn(async move {
                     let mut connection_manager = ConnectionManager::new(stream, app_state);
 
@@ -29,6 +31,4 @@ async fn main() -> Result<()> {
             Err(e) => eprintln!("{e}"),
         }
     }
-
-    Ok(())
 }

@@ -63,6 +63,7 @@ impl ConnectionManager {
         loop {
             match self.login().await.context("Could not validate login") {
                 Ok(LoginStatus::Success(username)) => {
+                    println!("Successful login from user: {username}");
                     self.login_status = LoginStatus::Success(username);
                     break;
                 }
@@ -106,6 +107,7 @@ impl ConnectionManager {
     }
 }
 
+#[allow(dead_code)]
 pub struct AppState {
     users: RwLock<Vec<User>>,
     messages: RwLock<Vec<Message>>,
