@@ -60,18 +60,6 @@ impl ConnectionManager {
             .await
             .context("Could not send welcome message")?;
 
-        loop {
-            match self.login().await.context("Could not validate login") {
-                Ok(LoginStatus::Success(username)) => {
-                    println!("Successful login from user: {username}");
-                    self.login_status = LoginStatus::Success(username);
-                    break;
-                }
-                Ok(LoginStatus::Failure) => continue,
-                Err(e) => eprintln!("{e}"),
-            }
-        }
-
         let mut input = String::new();
 
         loop {
@@ -95,7 +83,32 @@ impl ConnectionManager {
     }
 
     pub async fn welcome(&mut self) -> Result<()> {
-        self.writeln("WELCOME TO THIS BBS").await
+        self.writeln("WELCOME TO THIS BBS").await?;
+        self.writeln("").await?;
+        self.writeln("[1]Login [2]Register [3]Disconnect").await?;
+
+        let option = self.prompt("> ").await?;
+
+        self.writeln("").await?;
+
+        match option.as_str() {
+            "1" => loop {
+                match self.login().await.context("Could not validate login") {
+                    Ok(LoginStatus::Success(username)) => {
+                        println!("Successful login from user: {username}");
+                        self.login_status = LoginStatus::Success(username);
+                        break;
+                    }
+                    Ok(LoginStatus::Failure) => continue,
+                    Err(e) => eprintln!("{e}"),
+                }
+            },
+            "2" => todo!(),
+            "3" => todo!(),
+            _ => todo!(),
+        }
+
+        Ok(())
     }
 
     async fn write(&mut self, data: &str) -> Result<()> {
