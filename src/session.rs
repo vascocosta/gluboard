@@ -37,9 +37,13 @@ impl ConnectionManager {
             .first()
             .context("Could not find user")?;
 
-        // TODO: Check if password is also valid.
+        let valid_password = bcrypt::verify(password, &user.password)?;
 
-        Ok(LoginStatus::Success(user.username.clone()))
+        if !valid_password {
+            Ok(LoginStatus::Failure)
+        } else {
+            Ok(LoginStatus::Success(user.username.clone()))
+        }
     }
 
     async fn prompt(&mut self, text: &str) -> Result<String> {
