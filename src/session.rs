@@ -1,4 +1,5 @@
 use anyhow::{Context, Result};
+use bcrypt::DEFAULT_COST;
 use serde::{Deserialize, Serialize};
 use std::{fs::read_to_string, path::Path, sync::Arc};
 use tokio::{
@@ -55,6 +56,21 @@ impl ConnectionManager {
         Ok(answer.trim().to_owned())
     }
 
+    async fn register(&mut self) -> Result<()> {
+        let username = self.prompt("Choose a username: ").await?;
+        let password = self.prompt("Choose a password: ").await?;
+
+        let user = User {
+            id: 1,
+            username: username.to_owned(),
+            password: bcrypt::hash(password, DEFAULT_COST)?,
+        };
+
+        self.app_state.users.write().await.push(user);
+
+        Ok(())
+    }
+
     pub async fn run(&mut self) -> Result<()> {
         self.welcome()
             .await
@@ -103,7 +119,12 @@ impl ConnectionManager {
                     Err(e) => eprintln!("{e}"),
                 }
             },
-            "2" => todo!(),
+            "2" => match self.register().await.context("Could not register user") {
+                Ok(_) => {
+                    println!("Successful user registration");
+                }
+                Err(e) => eprintln!("{e}"),
+            },
             "3" => todo!(),
             _ => todo!(),
         }
