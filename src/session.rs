@@ -101,35 +101,45 @@ impl ConnectionManager {
     pub async fn welcome(&mut self) -> Result<()> {
         self.writeln("WELCOME TO THIS BBS").await?;
         self.writeln("").await?;
-        self.writeln("[1]Login [2]Register [3]Disconnect").await?;
 
-        let option = self.prompt("> ").await?;
+        loop {
+            self.writeln("[1]Login [2]Register [3]Disconnect").await?;
 
-        self.writeln("").await?;
+            let option = self.prompt("> ").await?;
 
-        match option.as_str() {
-            "1" => loop {
-                match self.login().await.context("Could not validate login") {
-                    Ok(LoginStatus::Success(username)) => {
-                        println!("Successful login from user: {username}");
-                        self.login_status = LoginStatus::Success(username);
-                        break;
+            self.writeln("").await?;
+
+            match option.as_str() {
+                "1" => {
+                    loop {
+                        match self.login().await.context("Could not validate login") {
+                            Ok(LoginStatus::Success(username)) => {
+                                println!("Successful login from user: {username}");
+                                self.writeln("Login successful!").await?;
+                                self.login_status = LoginStatus::Success(username);
+                                break;
+                            }
+                            Ok(LoginStatus::Failure) => {
+                                self.writeln("Login failed!").await?;
+
+                                continue;
+                            }
+                            Err(e) => eprintln!("{e}"),
+                        }
                     }
-                    Ok(LoginStatus::Failure) => continue,
-                    Err(e) => eprintln!("{e}"),
-                }
-            },
-            "2" => match self.register().await.context("Could not register user") {
-                Ok(_) => {
-                    println!("Successful user registration");
-                }
-                Err(e) => eprintln!("{e}"),
-            },
-            "3" => todo!(),
-            _ => todo!(),
-        }
 
-        Ok(())
+                    break Ok(());
+                }
+                "2" => match self.register().await.context("Could not register user") {
+                    Ok(_) => {
+                        println!("Successful user registration");
+                    }
+                    Err(e) => eprintln!("{e}"),
+                },
+                "3" => todo!(),
+                _ => todo!(),
+            }
+        }
     }
 
     async fn write(&mut self, data: &str) -> Result<()> {
