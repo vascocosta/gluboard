@@ -1,8 +1,9 @@
 use anyhow::{Context, Result};
 use bcrypt::DEFAULT_COST;
 use serde::{Deserialize, Serialize};
-use std::{fs::read_to_string, path::Path, sync::Arc};
+use std::{path::Path, sync::Arc};
 use tokio::{
+    fs::read_to_string,
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::TcpStream,
     sync::RwLock,
@@ -165,16 +166,16 @@ impl AppState {
         }
     }
 
-    pub fn from_file() -> Result<Self> {
+    pub async fn from_file() -> Result<Self> {
         let users: Vec<User> = if Path::new(USERS_FILE).exists() {
-            let users_json = read_to_string(USERS_FILE)?;
+            let users_json = read_to_string(USERS_FILE).await?;
             serde_json::from_str(&users_json)?
         } else {
             Vec::new()
         };
 
         let messages: Vec<Message> = if Path::new(MESSAGES_FILE).exists() {
-            let messages_json = read_to_string(MESSAGES_FILE)?;
+            let messages_json = read_to_string(MESSAGES_FILE).await?;
             serde_json::from_str(&messages_json)?
         } else {
             Vec::new()

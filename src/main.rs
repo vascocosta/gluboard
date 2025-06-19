@@ -11,7 +11,7 @@ const ADDRESS: &str = "127.0.0.1:2323";
 #[tokio::main]
 async fn main() -> Result<()> {
     let listener = TcpListener::bind(ADDRESS).await?;
-    let app_state = Arc::new(AppState::from_file().unwrap_or(AppState::new()));
+    let app_state = Arc::new(AppState::from_file().await.unwrap_or(AppState::new()));
 
     loop {
         match listener.accept().await.context("Client connection failed") {
