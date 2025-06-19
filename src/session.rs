@@ -106,14 +106,15 @@ impl ConnectionManager {
         self.writeln("").await?;
 
         loop {
-            self.writeln("[1]Login [2]Register [3]Disconnect").await?;
+            self.writeln("Commands:").await?;
+            self.writeln("login | register | disconnect").await?;
 
             let option = self.prompt("> ").await?;
 
             self.writeln("").await?;
 
             match option.as_str() {
-                "1" => {
+                "login" => {
                     loop {
                         match self.login().await.context("Could not validate login") {
                             Ok(LoginStatus::Success(username)) => {
@@ -133,15 +134,15 @@ impl ConnectionManager {
 
                     break Ok(());
                 }
-                "2" => match self.register().await.context("Could not register user") {
+                "register" => match self.register().await.context("Could not register user") {
                     Ok(_) => {
                         self.app_state.save().await?;
                         println!("Successful user registration");
                     }
                     Err(e) => eprintln!("{e}"),
                 },
-                "3" => todo!(),
-                _ => todo!(),
+                "disconnect" => todo!(),
+                _ => self.writeln("Invalid command!").await?,
             }
         }
     }
