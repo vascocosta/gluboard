@@ -141,7 +141,7 @@ impl ConnectionManager {
                     }
                     Err(e) => eprintln!("{e}"),
                 },
-                "disconnect" => todo!(),
+                "disconnect" => self.stream.get_mut().shutdown().await?,
                 _ => self.writeln("Invalid command!").await?,
             }
         }
