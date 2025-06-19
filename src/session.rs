@@ -73,14 +73,16 @@ impl ConnectionManager {
     }
 
     pub async fn run(&mut self) -> Result<()> {
-        self.welcome()
-            .await
-            .context("Could not send welcome message")?;
+        self.welcome().await.context("Could not perform welcome")?;
 
         let mut input = String::new();
 
         loop {
-            self.stream.read_line(&mut input).await?;
+            self.stream
+                .read_line(&mut input)
+                .await
+                .context("Could not read data from client")?;
+
             // TODO: Handle input by parsing it into a command.
             input.clear();
         }
