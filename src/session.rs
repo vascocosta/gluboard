@@ -3,7 +3,7 @@ use bcrypt::DEFAULT_COST;
 use serde::{Deserialize, Serialize};
 use std::{path::Path, sync::Arc};
 use tokio::{
-    fs::read_to_string,
+    fs::{File, read_to_string},
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::TcpStream,
     sync::RwLock,
@@ -133,6 +133,7 @@ impl ConnectionManager {
                 }
                 "2" => match self.register().await.context("Could not register user") {
                     Ok(_) => {
+                        self.app_state.save().await?;
                         println!("Successful user registration");
                     }
                     Err(e) => eprintln!("{e}"),
@@ -185,6 +186,16 @@ impl AppState {
             users: RwLock::new(users),
             messages: RwLock::new(messages),
         })
+    }
+
+    async fn save(&self) -> Result<()> {
+        let mut file = File::create(USERS_FILE).await?;
+        let users = &*self.users.read().await; // * gets the inner value of the Lock.
+        let users_json = serde_json::to_string_pretty(users)?;
+
+        file.write_all(users_json.as_bytes()).await?;
+
+        Ok(())
     }
 }
 
