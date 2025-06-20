@@ -1,9 +1,10 @@
-use crate::session::{AppState, LoginStatus, Session, User};
+use crate::session::{LoginStatus, Session, User};
 use anyhow::{Context, Result};
 
+#[allow(dead_code)]
 pub trait Command {
     fn name(&self) -> &str;
-    async fn execute(&self, session: Session) -> Result<LoginStatus>;
+    async fn execute(&self, session: &mut Session) -> Result<()>;
     fn help(&self) -> String;
 }
 
@@ -14,7 +15,7 @@ impl Command for Login {
         "login"
     }
 
-    async fn execute(&self, mut session: Session) -> Result<LoginStatus> {
+    async fn execute(&self, session: &mut Session) -> Result<()> {
         let username = session.prompt("Username: ").await?;
         let password = session.prompt("Password: ").await?;
 
@@ -34,7 +35,7 @@ impl Command for Login {
             session.login_status = LoginStatus::Success(user.username.clone());
         }
 
-        Ok(session.login_status)
+        Ok(())
     }
 
     fn help(&self) -> String {
