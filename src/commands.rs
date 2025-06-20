@@ -1,5 +1,6 @@
 use crate::session::{LoginStatus, Session, User};
 use anyhow::{Context, Result};
+use bcrypt::DEFAULT_COST;
 
 #[allow(dead_code)]
 pub trait Command {
@@ -34,6 +35,33 @@ impl Command for Login {
         } else {
             session.login_status = LoginStatus::Success(user.username.clone());
         }
+
+        Ok(())
+    }
+
+    fn help(&self) -> String {
+        todo!()
+    }
+}
+
+pub struct Register;
+
+impl Command for Register {
+    fn name(&self) -> &str {
+        "register"
+    }
+
+    async fn execute(&self, session: &mut Session) -> Result<()> {
+        let username = session.prompt("Choose a username: ").await?;
+        let password = session.prompt("Choose a password: ").await?;
+
+        let user = User {
+            id: 1,
+            username: username.to_owned(),
+            password: bcrypt::hash(password, DEFAULT_COST)?,
+        };
+
+        session.app_state.users.write().await.push(user);
 
         Ok(())
     }
