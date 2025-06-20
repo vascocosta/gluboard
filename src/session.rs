@@ -210,7 +210,7 @@ pub struct User {
 }
 
 #[derive(Deserialize, Serialize)]
-struct Message {
+pub struct Message {
     id: i64,
     user: User,
     subject: String,
