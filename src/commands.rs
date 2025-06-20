@@ -1,6 +1,5 @@
-use crate::session::{AppState, ConnectionManager, LoginStatus, User};
+use crate::session::{AppState, LoginStatus, Session, User};
 use anyhow::{Context, Result};
-use tokio::{io::BufReader, net::TcpStream};
 
 pub trait Command {
     fn name(&self) -> &str;
@@ -10,7 +9,7 @@ pub trait Command {
 
 pub struct CommandContext {
     pub app_state: AppState,
-    pub connection_manager: ConnectionManager,
+    pub session: Session,
 }
 
 pub struct Login;
@@ -21,8 +20,8 @@ impl Command for Login {
     }
 
     async fn execute(&self, mut ctx: CommandContext) -> Result<LoginStatus> {
-        let username = ctx.connection_manager.prompt("Username: ").await?;
-        let password = ctx.connection_manager.prompt("Password: ").await?;
+        let username = ctx.session.prompt("Username: ").await?;
+        let password = ctx.session.prompt("Password: ").await?;
 
         let users = ctx.app_state.users.read().await;
         let user: &User = users
@@ -35,12 +34,12 @@ impl Command for Login {
         let valid_password = bcrypt::verify(password, &user.password)?;
 
         if !valid_password {
-            ctx.connection_manager.login_status = LoginStatus::Failure;
+            ctx.session.login_status = LoginStatus::Failure;
         } else {
-            ctx.connection_manager.login_status = LoginStatus::Success(user.username.clone());
+            ctx.session.login_status = LoginStatus::Success(user.username.clone());
         }
 
-        Ok(ctx.connection_manager.login_status)
+        Ok(ctx.session.login_status)
     }
 
     fn help(&self) -> String {

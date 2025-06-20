@@ -12,13 +12,13 @@ use tokio::{
 const USERS_FILE: &str = "users.json";
 const MESSAGES_FILE: &str = "messages.json";
 
-pub struct ConnectionManager {
+pub struct Session {
     stream: BufReader<TcpStream>,
     app_state: Arc<AppState>,
     pub login_status: LoginStatus,
 }
 
-impl ConnectionManager {
+impl Session {
     pub fn new(stream: TcpStream, app_state: Arc<AppState>) -> Self {
         Self {
             stream: BufReader::new(stream),

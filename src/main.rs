@@ -4,7 +4,7 @@ mod session;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
-use session::{AppState, ConnectionManager};
+use session::{AppState, Session};
 use tokio::{net::TcpListener, spawn};
 
 const ADDRESS: &str = "127.0.0.1:2323";
@@ -22,9 +22,9 @@ async fn main() -> Result<()> {
                 println!("Connection from: {address}");
 
                 spawn(async move {
-                    let mut connection_manager = ConnectionManager::new(stream, app_state);
+                    let mut session = Session::new(stream, app_state);
 
-                    if let Err(e) = connection_manager.run().await {
+                    if let Err(e) = session.run().await {
                         eprintln!("{e}");
                     }
                 });
