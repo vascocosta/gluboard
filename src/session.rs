@@ -15,7 +15,7 @@ const MESSAGES_FILE: &str = "messages.json";
 pub struct ConnectionManager {
     stream: BufReader<TcpStream>,
     app_state: Arc<AppState>,
-    login_status: LoginStatus,
+    pub login_status: LoginStatus,
 }
 
 impl ConnectionManager {
@@ -48,7 +48,7 @@ impl ConnectionManager {
         }
     }
 
-    async fn prompt(&mut self, text: &str) -> Result<String> {
+    pub async fn prompt(&mut self, text: &str) -> Result<String> {
         let mut answer = String::new();
 
         self.write(text).await?;
@@ -158,8 +158,8 @@ impl ConnectionManager {
 
 #[allow(dead_code)]
 pub struct AppState {
-    users: RwLock<Vec<User>>,
-    messages: RwLock<Vec<Message>>,
+    pub users: RwLock<Vec<User>>,
+    pub messages: RwLock<Vec<Message>>,
 }
 
 impl AppState {
@@ -203,10 +203,10 @@ impl AppState {
 }
 
 #[derive(Deserialize, Serialize)]
-struct User {
-    id: i64,
-    username: String,
-    password: String,
+pub struct User {
+    pub id: i64,
+    pub username: String,
+    pub password: String,
 }
 
 #[derive(Deserialize, Serialize)]

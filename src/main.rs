@@ -1,3 +1,4 @@
+mod commands;
 mod session;
 
 use std::sync::Arc;
