@@ -14,7 +14,7 @@ const MESSAGES_FILE: &str = "messages.json";
 
 pub struct Session {
     stream: BufReader<TcpStream>,
-    app_state: Arc<AppState>,
+    pub app_state: Arc<AppState>,
     pub login_status: LoginStatus,
 }
 

@@ -3,13 +3,8 @@ use anyhow::{Context, Result};
 
 pub trait Command {
     fn name(&self) -> &str;
-    async fn execute(&self, ctx: CommandContext) -> Result<LoginStatus>;
+    async fn execute(&self, session: Session) -> Result<LoginStatus>;
     fn help(&self) -> String;
-}
-
-pub struct CommandContext {
-    pub app_state: AppState,
-    pub session: Session,
 }
 
 pub struct Login;
@@ -19,11 +14,11 @@ impl Command for Login {
         "login"
     }
 
-    async fn execute(&self, mut ctx: CommandContext) -> Result<LoginStatus> {
-        let username = ctx.session.prompt("Username: ").await?;
-        let password = ctx.session.prompt("Password: ").await?;
+    async fn execute(&self, mut session: Session) -> Result<LoginStatus> {
+        let username = session.prompt("Username: ").await?;
+        let password = session.prompt("Password: ").await?;
 
-        let users = ctx.app_state.users.read().await;
+        let users = session.app_state.users.read().await;
         let user: &User = users
             .iter()
             .filter(|u| u.username == username)
@@ -34,12 +29,12 @@ impl Command for Login {
         let valid_password = bcrypt::verify(password, &user.password)?;
 
         if !valid_password {
-            ctx.session.login_status = LoginStatus::Failure;
+            session.login_status = LoginStatus::Failure;
         } else {
-            ctx.session.login_status = LoginStatus::Success(user.username.clone());
+            session.login_status = LoginStatus::Success(user.username.clone());
         }
 
-        Ok(ctx.session.login_status)
+        Ok(session.login_status)
     }
 
     fn help(&self) -> String {
