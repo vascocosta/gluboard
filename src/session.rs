@@ -1,5 +1,4 @@
-use anyhow::{Context, Result};
-use bcrypt::DEFAULT_COST;
+use anyhow::{Context, Ok, Result};
 use serde::{Deserialize, Serialize};
 use std::{path::Path, sync::Arc};
 use tokio::{
@@ -8,6 +7,8 @@ use tokio::{
     net::TcpStream,
     sync::RwLock,
 };
+
+use crate::commands::CommandHandler;
 
 const USERS_FILE: &str = "users.json";
 const MESSAGES_FILE: &str = "messages.json";
@@ -27,27 +28,6 @@ impl Session {
         }
     }
 
-    pub async fn login(&mut self) -> Result<LoginStatus> {
-        let username = self.prompt("Username: ").await?;
-        let password = self.prompt("Password: ").await?;
-
-        let users = self.app_state.users.read().await;
-        let user: &User = users
-            .iter()
-            .filter(|u| u.username == username)
-            .collect::<Vec<&User>>()
-            .first()
-            .context("Could not find user")?;
-
-        let valid_password = bcrypt::verify(password, &user.password)?;
-
-        if !valid_password {
-            Ok(LoginStatus::Failure)
-        } else {
-            Ok(LoginStatus::Success(user.username.clone()))
-        }
-    }
-
     pub async fn prompt(&mut self, text: &str) -> Result<String> {
         let mut answer = String::new();
 
@@ -55,21 +35,6 @@ impl Session {
         self.stream.read_line(&mut answer).await?;
 
         Ok(answer.trim().to_owned())
-    }
-
-    async fn register(&mut self) -> Result<()> {
-        let username = self.prompt("Choose a username: ").await?;
-        let password = self.prompt("Choose a password: ").await?;
-
-        let user = User {
-            id: 1,
-            username: username.to_owned(),
-            password: bcrypt::hash(password, DEFAULT_COST)?,
-        };
-
-        self.app_state.users.write().await.push(user);
-
-        Ok(())
     }
 
     pub async fn run(&mut self) -> Result<()> {
@@ -105,53 +70,58 @@ impl Session {
         self.writeln("WELCOME TO THIS BBS").await?;
         self.writeln("").await?;
 
-        loop {
-            self.writeln("Commands:").await?;
-            self.writeln("login | register | disconnect").await?;
+        self.writeln("Commands:").await?;
+        self.writeln("login | register | disconnect").await?;
 
-            let option = self.prompt("> ").await?;
+        let command_handler = CommandHandler::new();
+        let raw_command = self.prompt("> ").await?;
 
-            self.writeln("").await?;
+        self.writeln("").await?;
 
-            match option.as_str() {
-                "login" => {
-                    loop {
-                        match self.login().await.context("Could not validate login") {
-                            Ok(LoginStatus::Success(username)) => {
-                                println!("Successful login from user: {username}");
-                                self.writeln("Login successful!").await?;
-                                self.login_status = LoginStatus::Success(username);
-                                break;
-                            }
-                            Ok(LoginStatus::Failure) => {
-                                self.writeln("Login failed!").await?;
+        command_handler.handle(&raw_command, self).await?;
 
-                                continue;
-                            }
-                            Err(e) => eprintln!("{e}"),
-                        }
-                    }
+        // match option.as_str() {
+        //     "login" => {
+        //         loop {
+        //             match self.login().await.context("Could not validate login") {
+        //                 Ok(LoginStatus::Success(username)) => {
+        //                     println!("Successful login from user: {username}");
+        //                     self.writeln("Login successful!").await?;
+        //                     self.login_status = LoginStatus::Success(username);
+        //                     break;
+        //                 }
+        //                 Ok(LoginStatus::Failure) => {
+        //                     self.writeln("Login failed!").await?;
 
-                    break Ok(());
-                }
-                "register" => match self.register().await.context("Could not register user") {
-                    Ok(_) => {
-                        self.app_state.save().await?;
-                        println!("Successful user registration");
-                    }
-                    Err(e) => eprintln!("{e}"),
-                },
-                "disconnect" => self.stream.get_mut().shutdown().await?,
-                _ => self.writeln("Invalid command!").await?,
-            }
-        }
+        //                     continue;
+        //                 }
+        //                 Err(e) => eprintln!("{e}"),
+        //             }
+        //         }
+
+        //         break Ok(());
+        //     }
+        // "register" => match Register::execute(self)
+        //     .await
+        //     .context("Could not register user")
+        // {
+        //     Ok(_) => {
+        //         self.app_state.save().await?;
+        //         println!("Successful user registration");
+        //     }
+        //     Err(e) => eprintln!("{e}"),
+        // },
+        // "disconnect" => self.stream.get_mut().shutdown().await?,
+        // _ => self.writeln("Invalid command!").await?,
+
+        Ok(())
     }
 
-    async fn write(&mut self, data: &str) -> Result<()> {
+    pub async fn write(&mut self, data: &str) -> Result<()> {
         self.send(data, false).await
     }
 
-    async fn writeln(&mut self, data: &str) -> Result<()> {
+    pub async fn writeln(&mut self, data: &str) -> Result<()> {
         self.send(data, true).await
     }
 }
@@ -191,7 +161,7 @@ impl AppState {
         })
     }
 
-    async fn save(&self) -> Result<()> {
+    pub async fn save(&self) -> Result<()> {
         let mut file = File::create(USERS_FILE).await?;
         let users = &*self.users.read().await; // * gets the inner value of the Lock.
         let users_json = serde_json::to_string_pretty(users)?;
