@@ -73,49 +73,16 @@ impl Session {
         self.writeln("Commands:").await?;
         self.writeln("login | register | disconnect").await?;
 
-        let command_handler = CommandHandler::new();
         let raw_command = self.prompt("> ").await?;
 
         self.writeln("").await?;
 
+        let command_handler = CommandHandler::new();
+
         while let Err(e) = command_handler.handle(&raw_command, self).await {
             eprintln!("{e}");
-            self.writeln(&format!("Error: {}", e)).await?
+            self.writeln(&format!("{e}")).await?
         }
-
-        // match option.as_str() {
-        //     "login" => {
-        //         loop {
-        //             match self.login().await.context("Could not validate login") {
-        //                 Ok(LoginStatus::Success(username)) => {
-        //                     println!("Successful login from user: {username}");
-        //                     self.writeln("Login successful!").await?;
-        //                     self.login_status = LoginStatus::Success(username);
-        //                     break;
-        //                 }
-        //                 Ok(LoginStatus::Failure) => {
-        //                     self.writeln("Login failed!").await?;
-
-        //                     continue;
-        //                 }
-        //                 Err(e) => eprintln!("{e}"),
-        //             }
-        //         }
-
-        //         break Ok(());
-        //     }
-        // "register" => match Register::execute(self)
-        //     .await
-        //     .context("Could not register user")
-        // {
-        //     Ok(_) => {
-        //         self.app_state.save().await?;
-        //         println!("Successful user registration");
-        //     }
-        //     Err(e) => eprintln!("{e}"),
-        // },
-        // "disconnect" => self.stream.get_mut().shutdown().await?,
-        // _ => self.writeln("Invalid command!").await?,
 
         Ok(())
     }

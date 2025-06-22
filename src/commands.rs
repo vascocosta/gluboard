@@ -5,17 +5,27 @@ use bcrypt::DEFAULT_COST;
 use std::collections::HashMap;
 
 pub struct CommandHandler {
-    commands: HashMap<&'static str, Box<dyn Command + Send + Sync>>,
+    welcome_commands: HashMap<&'static str, Box<dyn Command + Send + Sync>>,
+    message_commands: HashMap<&'static str, Box<dyn Command + Send + Sync>>,
 }
 
 impl CommandHandler {
     pub fn new() -> Self {
-        let mut commands: HashMap<&'static str, Box<dyn Command + Send + Sync>> = HashMap::new();
+        let mut welcome_commands: HashMap<&'static str, Box<dyn Command + Send + Sync>> =
+            HashMap::new();
 
-        commands.insert("login", Box::new(Login));
-        commands.insert("register", Box::new(Register));
+        welcome_commands.insert("login", Box::new(Login));
+        welcome_commands.insert("register", Box::new(Register));
 
-        Self { commands }
+        let mut message_commands: HashMap<&'static str, Box<dyn Command + Send + Sync>> =
+            HashMap::new();
+
+        message_commands.insert("message", Box::new(Message));
+
+        Self {
+            welcome_commands,
+            message_commands,
+        }
     }
 
     pub async fn handle(&self, raw_command: &str, session: &mut Session) -> Result<()> {
@@ -24,11 +34,22 @@ impl CommandHandler {
             .next()
             .context("Invalid command")?;
 
-        self.commands
-            .get(name)
-            .context("Unknown command")?
-            .execute(session)
-            .await
+        match session.login_status {
+            LoginStatus::Failure => {
+                self.welcome_commands
+                    .get(name)
+                    .context("Unknown command")?
+                    .execute(session)
+                    .await
+            }
+            LoginStatus::Success(_) => {
+                self.message_commands
+                    .get(name)
+                    .context("Unknown command")?
+                    .execute(session)
+                    .await
+            }
+        }
     }
 }
 
@@ -67,9 +88,10 @@ impl Command for Login {
 
             if !valid_password {
                 session.login_status = LoginStatus::Failure;
-                session.writeln("Login failed!").await?;
+                session.writeln("Login failed").await?;
             } else {
                 session.login_status = LoginStatus::Success(username);
+                session.writeln("Login successful").await?;
                 break;
             }
         }
@@ -97,13 +119,33 @@ impl Command for Register {
         let user = User {
             id: 1,
             username: username.to_owned(),
-            password: bcrypt::hash(password, DEFAULT_COST)?,
+            password: bcrypt::hash(password, DEFAULT_COST).context("Could not register user")?,
         };
 
         session.app_state.users.write().await.push(user);
         session.app_state.save().await?;
+        session.login_status = LoginStatus::Success(username);
+        session.writeln("Registration successful").await?;
+        session.writeln("Login successful").await?;
 
         Ok(())
+    }
+
+    fn help(&self) -> String {
+        todo!()
+    }
+}
+
+pub struct Message;
+
+#[async_trait]
+impl Command for Message {
+    fn name(&self) -> &str {
+        "message"
+    }
+
+    async fn execute(&self, session: &mut Session) -> Result<()> {
+        todo!()
     }
 
     fn help(&self) -> String {
