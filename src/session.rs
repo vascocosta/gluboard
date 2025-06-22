@@ -78,7 +78,10 @@ impl Session {
 
         self.writeln("").await?;
 
-        command_handler.handle(&raw_command, self).await?;
+        while let Err(e) = command_handler.handle(&raw_command, self).await {
+            eprintln!("{e}");
+            self.writeln(&format!("Error: {}", e)).await?
+        }
 
         // match option.as_str() {
         //     "login" => {
