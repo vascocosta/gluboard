@@ -29,24 +29,23 @@ impl CommandHandler {
     }
 
     pub async fn handle(&self, raw_command: &str, session: &mut Session) -> Result<()> {
-        let name = raw_command
-            .split_whitespace()
-            .next()
-            .context("Invalid command")?;
+        let mut parts = raw_command.split_whitespace();
+        let name = parts.next().context("Invalid command")?;
+        let args: Vec<&str> = parts.collect();
 
         match session.login_status {
             LoginStatus::Failure => {
                 self.welcome_commands
                     .get(name)
                     .context("Unknown command")?
-                    .execute(session)
+                    .execute(session, if args.is_empty() { None } else { Some(&args) })
                     .await
             }
             LoginStatus::Success(_) => {
                 self.message_commands
                     .get(name)
                     .context("Unknown command")?
-                    .execute(session)
+                    .execute(session, if args.is_empty() { None } else { Some(&args) })
                     .await
             }
         }
@@ -57,7 +56,7 @@ impl CommandHandler {
 #[async_trait]
 pub trait Command {
     fn name(&self) -> &str;
-    async fn execute(&self, session: &mut Session) -> Result<()>;
+    async fn execute(&self, session: &mut Session, args: Option<&[&str]>) -> Result<()>;
     fn help(&self) -> String;
 }
 
@@ -69,7 +68,7 @@ impl Command for Login {
         "login"
     }
 
-    async fn execute(&self, session: &mut Session) -> Result<()> {
+    async fn execute(&self, session: &mut Session, args: Option<&[&str]>) -> Result<()> {
         loop {
             let username = session.prompt("Username: ").await?;
             let password = session.prompt("Password: ").await?;
@@ -112,7 +111,7 @@ impl Command for Register {
         "register"
     }
 
-    async fn execute(&self, session: &mut Session) -> Result<()> {
+    async fn execute(&self, session: &mut Session, args: Option<&[&str]>) -> Result<()> {
         let username = session.prompt("Choose a username: ").await?;
         let password = session.prompt("Choose a password: ").await?;
 
@@ -144,8 +143,15 @@ impl Command for Message {
         "message"
     }
 
-    async fn execute(&self, session: &mut Session) -> Result<()> {
-        todo!()
+    async fn execute(&self, session: &mut Session, args: Option<&[&str]>) -> Result<()> {
+        match args {
+            None => session.writeln("No sub commands").await,
+            Some([sub_command]) => session.writeln(sub_command).await,
+            Some([sub_command, sub_arg]) => {
+                session.writeln(&format!("{sub_command} {sub_arg}")).await
+            }
+            Some(&[]) | Some(&[_, _, _, ..]) => session.writeln("Show usage").await,
+        }
     }
 
     fn help(&self) -> String {

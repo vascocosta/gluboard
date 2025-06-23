@@ -40,16 +40,11 @@ impl Session {
     pub async fn run(&mut self) -> Result<()> {
         self.welcome().await.context("Could not perform welcome")?;
 
-        let mut input = String::new();
+        let command_handler = CommandHandler::new();
 
         loop {
-            self.stream
-                .read_line(&mut input)
-                .await
-                .context("Could not read data from client")?;
-
-            // TODO: Handle input by parsing it into a command.
-            input.clear();
+            let raw_command = self.prompt("> ").await?;
+            command_handler.handle(&raw_command, self).await?;
         }
     }
 
