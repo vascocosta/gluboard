@@ -1,4 +1,4 @@
-use crate::session::{LoginStatus, Session, User};
+use crate::session::{self, LoginStatus, Session, User};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use bcrypt::DEFAULT_COST;
@@ -146,7 +146,11 @@ impl Command for Message {
     async fn execute(&self, session: &mut Session, args: Option<&[&str]>) -> Result<()> {
         match args {
             None => session.writeln("No sub commands").await,
-            Some([sub_command]) => session.writeln(sub_command).await,
+            Some([sub_command]) => match *sub_command {
+                "list" => session.writeln("list!!!").await,
+                "stats" => todo!(),
+                _ => todo!(),
+            },
             Some([sub_command, sub_arg]) => {
                 session.writeln(&format!("{sub_command} {sub_arg}")).await
             }

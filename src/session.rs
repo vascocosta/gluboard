@@ -1,4 +1,4 @@
-use anyhow::{Context, Ok, Result};
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::{path::Path, sync::Arc};
 use tokio::{
@@ -41,7 +41,6 @@ impl Session {
         self.welcome().await.context("Could not perform welcome")?;
 
         let command_handler = CommandHandler::new();
-
         loop {
             let raw_command = self.prompt("> ").await?;
             command_handler.handle(&raw_command, self).await?;
@@ -67,19 +66,17 @@ impl Session {
 
         self.writeln("Commands:").await?;
         self.writeln("login | register | disconnect").await?;
-
-        let raw_command = self.prompt("> ").await?;
-
         self.writeln("").await?;
 
         let command_handler = CommandHandler::new();
 
-        while let Err(e) = command_handler.handle(&raw_command, self).await {
-            eprintln!("{e}");
-            self.writeln(&format!("{e}")).await?
-        }
+        loop {
+            let raw_command = self.prompt("> ").await?;
 
-        Ok(())
+            if let Err(e) = command_handler.handle(&raw_command, self).await {
+                self.writeln(&format!("{e}")).await?
+            }
+        }
     }
 
     pub async fn write(&mut self, data: &str) -> Result<()> {
