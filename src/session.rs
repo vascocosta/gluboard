@@ -143,10 +143,10 @@ pub struct User {
 
 #[derive(Deserialize, Serialize)]
 pub struct Message {
-    id: i64,
-    user: User,
-    subject: String,
-    body: String,
+    pub id: i64,
+    pub user: User,
+    pub subject: String,
+    pub body: String,
 }
 
 #[derive(Debug)]

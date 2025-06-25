@@ -147,8 +147,18 @@ impl Command for Message {
         match args {
             None => session.writeln("No sub commands").await,
             Some([sub_command]) => match *sub_command {
-                "list" => session.writeln("list!!!").await,
-                "stats" => todo!(),
+                "list" => {
+                    let messages = &*session.app_state.messages.read().await;
+
+                    for message in messages {
+                        println!(
+                            "{} {} {}",
+                            message.id, message.user.username, message.subject
+                        );
+                    }
+
+                    Ok(())
+                }
                 _ => todo!(),
             },
             Some([sub_command, sub_arg]) => {
