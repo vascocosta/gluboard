@@ -1,4 +1,4 @@
-use crate::session::{self, LoginStatus, Session, User};
+use crate::session::{self, AppStateKind, LoginStatus, Message, Session, User};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use bcrypt::DEFAULT_COST;
@@ -20,7 +20,7 @@ impl CommandHandler {
         let mut message_commands: HashMap<&'static str, Box<dyn Command + Send + Sync>> =
             HashMap::new();
 
-        message_commands.insert("message", Box::new(Message));
+        message_commands.insert("message", Box::new(Messages));
 
         Self {
             welcome_commands,
@@ -122,7 +122,7 @@ impl Command for Register {
         };
 
         session.app_state.users.write().await.push(user);
-        session.app_state.save().await?;
+        session.app_state.save(AppStateKind::Users).await?;
         session.login_status = LoginStatus::Success(username);
         session.writeln("Registration successful").await?;
         session.writeln("Login successful").await?;
@@ -135,10 +135,10 @@ impl Command for Register {
     }
 }
 
-pub struct Message;
+pub struct Messages;
 
 #[async_trait]
-impl Command for Message {
+impl Command for Messages {
     fn name(&self) -> &str {
         "message"
     }
@@ -148,18 +148,44 @@ impl Command for Message {
             None => session.writeln("No sub commands").await,
             Some([sub_command]) => match *sub_command {
                 "list" => {
-                    let messages = &*session.app_state.messages.read().await;
+                    let messages = {
+                        let guard = session.app_state.messages.read().await;
+                        guard.clone()
+                    };
 
                     for message in messages {
-                        println!(
-                            "{} {} {}",
-                            message.id, message.user.username, message.subject
-                        );
+                        session
+                            .writeln(&format!(
+                                "{} {} {}",
+                                message.id, message.username, message.subject
+                            ))
+                            .await?;
                     }
 
                     Ok(())
                 }
-                _ => todo!(),
+                "new" => {
+                    let subject = session.prompt("Subject: ").await?;
+                    let body = session.prompt("Body: ").await?;
+
+                    let username = match &session.login_status {
+                        LoginStatus::Success(username) => username,
+                        LoginStatus::Failure => todo!(),
+                    };
+
+                    let message = Message {
+                        id: 0,
+                        username: username.to_owned(),
+                        subject,
+                        body,
+                    };
+
+                    session.app_state.messages.write().await.push(message);
+                    session.app_state.save(AppStateKind::Messages).await?;
+
+                    Ok(())
+                }
+                _ => session.writeln("Unknown sub command").await,
             },
             Some([sub_command, sub_arg]) => {
                 session.writeln(&format!("{sub_command} {sub_arg}")).await

@@ -123,28 +123,39 @@ impl AppState {
         })
     }
 
-    pub async fn save(&self) -> Result<()> {
-        let mut file = File::create(USERS_FILE).await?;
-        let users = &*self.users.read().await; // * gets the inner value of the Lock.
-        let users_json = serde_json::to_string_pretty(users)?;
+    pub async fn save(&self, kind: AppStateKind) -> Result<()> {
+        match kind {
+            AppStateKind::Users => {
+                let mut file = File::create(USERS_FILE).await?;
+                let users = &*self.users.read().await; // * gets the inner value of the Lock.
+                let users_json = serde_json::to_string_pretty(users)?;
 
-        file.write_all(users_json.as_bytes()).await?;
+                file.write_all(users_json.as_bytes()).await?;
+            }
+            AppStateKind::Messages => {
+                let mut file = File::create(MESSAGES_FILE).await?;
+                let messages = &*self.messages.read().await; // * gets the inner value of the Lock.
+                let messages_json = serde_json::to_string_pretty(messages)?;
+
+                file.write_all(messages_json.as_bytes()).await?;
+            }
+        }
 
         Ok(())
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct User {
     pub id: i64,
     pub username: String,
     pub password: String,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct Message {
     pub id: i64,
-    pub user: User,
+    pub username: String,
     pub subject: String,
     pub body: String,
 }
@@ -153,4 +164,9 @@ pub struct Message {
 pub enum LoginStatus {
     Success(String),
     Failure,
+}
+
+pub enum AppStateKind {
+    Users,
+    Messages,
 }
