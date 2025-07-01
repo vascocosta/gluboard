@@ -166,7 +166,15 @@ impl Command for Messages {
                 }
                 "new" => {
                     let subject = session.prompt("Subject: ").await?;
-                    let body = session.prompt("Body: ").await?;
+                    let mut body = String::new();
+
+                    while let Ok(line) = session.prompt("").await {
+                        if line.trim() != "." {
+                            body = format!("{}{}", body, line);
+                        } else {
+                            break;
+                        }
+                    }
 
                     let username = match &session.login_status {
                         LoginStatus::Success(username) => username,
