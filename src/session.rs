@@ -105,14 +105,14 @@ impl AppState {
     pub async fn from_file() -> Result<Self> {
         let users: Vec<User> = if Path::new(USERS_FILE).exists() {
             let users_json = read_to_string(USERS_FILE).await?;
-            serde_json::from_str(&users_json)?
+            serde_json::from_str(&users_json).context("Could not read users")?
         } else {
             Vec::new()
         };
 
         let messages: Vec<Message> = if Path::new(MESSAGES_FILE).exists() {
             let messages_json = read_to_string(MESSAGES_FILE).await?;
-            serde_json::from_str(&messages_json)?
+            serde_json::from_str(&messages_json).context("Could not read messages")?
         } else {
             Vec::new()
         };
