@@ -105,6 +105,14 @@ impl Command for Login {
 
 pub struct Register;
 
+impl Register {
+    async fn generate_id(&self, session: &mut Session) -> Option<i64> {
+        let users = &*session.app_state.users.read().await;
+
+        Some(users.last()?.id + 1)
+    }
+}
+
 #[async_trait]
 impl Command for Register {
     fn name(&self) -> &str {
@@ -116,7 +124,7 @@ impl Command for Register {
         let password = session.prompt("Choose a password: ").await?;
 
         let user = User {
-            id: 1,
+            id: self.generate_id(session).await.unwrap_or_default(),
             username: username.to_owned(),
             password: bcrypt::hash(password, DEFAULT_COST).context("Could not register user")?,
         };
@@ -136,6 +144,14 @@ impl Command for Register {
 }
 
 pub struct Messages;
+
+impl Messages {
+    async fn generate_id(&self, session: &mut Session) -> Option<i64> {
+        let messages = &*session.app_state.messages.read().await;
+
+        Some(messages.last()?.id + 1)
+    }
+}
 
 #[async_trait]
 impl Command for Messages {
@@ -182,13 +198,13 @@ impl Command for Messages {
                         }
 
                         let username = match &session.login_status {
-                            LoginStatus::Success(username) => username,
+                            LoginStatus::Success(username) => username.to_owned(),
                             LoginStatus::Failure => todo!(),
                         };
 
                         let message = Message {
-                            id: 0,
-                            username: username.to_owned(),
+                            id: self.generate_id(session).await.unwrap_or_default(),
+                            username,
                             subject,
                             body,
                         };
