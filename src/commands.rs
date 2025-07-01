@@ -146,55 +146,61 @@ impl Command for Messages {
     async fn execute(&self, session: &mut Session, args: Option<&[&str]>) -> Result<()> {
         match args {
             None => session.writeln("No sub commands").await,
-            Some([sub_command]) => match *sub_command {
-                "list" => {
-                    let messages = {
-                        let guard = session.app_state.messages.read().await;
-                        guard.clone()
-                    };
+            Some([sub_command]) => {
+                match *sub_command {
+                    "list" => {
+                        let messages = {
+                            let guard = session.app_state.messages.read().await;
+                            guard.clone()
+                        };
 
-                    for message in messages {
-                        session
-                            .writeln(&format!(
-                                "{} {} {}",
-                                message.id, message.username, message.subject
-                            ))
-                            .await?;
-                    }
-
-                    Ok(())
-                }
-                "new" => {
-                    let subject = session.prompt("Subject: ").await?;
-                    let mut body = String::new();
-
-                    while let Ok(line) = session.prompt("").await {
-                        if line.trim() != "." {
-                            body = format!("{}{}", body, line);
-                        } else {
-                            break;
+                        for message in messages {
+                            session
+                                .writeln(&format!(
+                                    "{} {} {}",
+                                    message.id, message.username, message.subject
+                                ))
+                                .await?;
                         }
+
+                        Ok(())
                     }
+                    "new" => {
+                        let subject = session.prompt("Subject: ").await?;
+                        let mut body = String::new();
 
-                    let username = match &session.login_status {
-                        LoginStatus::Success(username) => username,
-                        LoginStatus::Failure => todo!(),
-                    };
+                        session
+                        .write("\nWrite your message. Type \".\" on a line by its own to finish.\n\n")
+                        .await?;
 
-                    let message = Message {
-                        id: 0,
-                        username: username.to_owned(),
-                        subject,
-                        body,
-                    };
+                        while let Ok(line) = session.prompt("").await {
+                            if line.trim() != "." {
+                                body = format!("{}{}\n", body, line);
+                            } else {
+                                break;
+                            }
+                        }
 
-                    session.app_state.messages.write().await.push(message);
-                    session.app_state.save(AppStateKind::Messages).await?;
+                        let username = match &session.login_status {
+                            LoginStatus::Success(username) => username,
+                            LoginStatus::Failure => todo!(),
+                        };
 
-                    Ok(())
+                        let message = Message {
+                            id: 0,
+                            username: username.to_owned(),
+                            subject,
+                            body,
+                        };
+
+                        session.app_state.messages.write().await.push(message);
+                        session.app_state.save(AppStateKind::Messages).await?;
+
+                        Ok(())
+                    }
+                    _ => session.writeln("Unknown sub command").await,
                 }
-                _ => session.writeln("Unknown sub command").await,
-            },
+            }
             Some([sub_command, sub_arg]) => {
                 session.writeln(&format!("{sub_command} {sub_arg}")).await
             }

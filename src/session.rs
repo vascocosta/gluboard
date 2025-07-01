@@ -41,6 +41,7 @@ impl Session {
         self.welcome().await.context("Could not perform welcome")?;
 
         let command_handler = CommandHandler::new();
+
         loop {
             let raw_command = self.prompt("> ").await?;
             command_handler.handle(&raw_command, self).await?;
