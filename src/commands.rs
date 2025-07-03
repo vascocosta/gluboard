@@ -186,7 +186,7 @@ impl Command for Messages {
                         let mut body = String::new();
 
                         session
-                        .write("\nWrite your message. Type \".\" on a line by its own to finish.\n\n")
+                        .write("\r\nWrite your message. Type \".\" on a line by its own to finish.\r\n\r\n")
                         .await?;
 
                         while let Ok(line) = session.prompt("").await {
