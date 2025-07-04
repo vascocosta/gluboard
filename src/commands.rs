@@ -162,64 +162,80 @@ impl Command for Messages {
     async fn execute(&self, session: &mut Session, args: Option<&[&str]>) -> Result<()> {
         match args {
             None => session.writeln("No sub commands").await,
-            Some([sub_command]) => {
-                match *sub_command {
-                    "list" => {
-                        let messages = {
-                            let guard = session.app_state.messages.read().await;
-                            guard.clone()
-                        };
+            Some([sub_command]) => match *sub_command {
+                "list" => {
+                    let messages = {
+                        let guard = session.app_state.messages.read().await;
+                        guard.clone()
+                    };
 
-                        for message in messages {
-                            session
-                                .writeln(&format!(
-                                    "{} {} {}",
-                                    message.id, message.username, message.subject
-                                ))
-                                .await?;
-                        }
-
-                        Ok(())
-                    }
-                    "new" => {
-                        let subject = session.prompt("Subject: ").await?;
-                        let mut body = String::new();
-
+                    for message in messages {
                         session
+                            .writeln(&format!(
+                                "{} {} {}",
+                                message.id, message.username, message.subject
+                            ))
+                            .await?;
+                    }
+
+                    Ok(())
+                }
+                "new" => {
+                    let subject = session.prompt("Subject: ").await?;
+                    let mut body = String::new();
+
+                    session
                         .write("\r\nWrite your message. Type \".\" on a line by its own to finish.\r\n\r\n")
                         .await?;
 
-                        while let Ok(line) = session.prompt("").await {
-                            if line.trim() != "." {
-                                body = format!("{}{}\n", body, line);
-                            } else {
-                                break;
-                            }
+                    while let Ok(line) = session.prompt("").await {
+                        if line.trim() != "." {
+                            body = format!("{}{}\r\n", body, line);
+                        } else {
+                            break;
                         }
-
-                        let username = match &session.login_status {
-                            LoginStatus::Success(username) => username.to_owned(),
-                            LoginStatus::Failure => todo!(),
-                        };
-
-                        let message = Message {
-                            id: self.generate_id(session).await.unwrap_or_default(),
-                            username,
-                            subject,
-                            body,
-                        };
-
-                        session.app_state.messages.write().await.push(message);
-                        session.app_state.save(AppStateKind::Messages).await?;
-
-                        Ok(())
                     }
-                    _ => session.writeln("Unknown sub command").await,
+
+                    let username = match &session.login_status {
+                        LoginStatus::Success(username) => username.to_owned(),
+                        LoginStatus::Failure => todo!(),
+                    };
+
+                    let message = Message {
+                        id: self.generate_id(session).await.unwrap_or_default(),
+                        username,
+                        subject,
+                        body,
+                    };
+
+                    session.app_state.messages.write().await.push(message);
+                    session.app_state.save(AppStateKind::Messages).await?;
+
+                    Ok(())
                 }
-            }
-            Some([sub_command, sub_arg]) => {
-                session.writeln(&format!("{sub_command} {sub_arg}")).await
-            }
+                _ => session.writeln("Unknown sub command").await,
+            },
+            Some([sub_command, sub_arg]) => match *sub_command {
+                "read" => {
+                    let message = {
+                        let messages = &*session.app_state.messages.read().await;
+                        let index: i64 = sub_arg.parse()?;
+
+                        messages
+                            .get(index as usize)
+                            .context("Invalid message id")?
+                            .to_owned()
+                    };
+
+                    session
+                        .writeln(&format!(
+                            "Subject: {}\r\n\r\n{}",
+                            message.subject, message.body
+                        ))
+                        .await
+                }
+                _ => session.writeln("Unknown sub command").await,
+            },
             Some(&[]) | Some(&[_, _, _, ..]) => session.writeln("Show usage").await,
         }
     }
