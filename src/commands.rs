@@ -1,4 +1,4 @@
-use crate::session::{self, AppStateKind, LoginStatus, Message, Session, User};
+use crate::session::{AppStateKind, LoginStatus, Message, Session, User};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use bcrypt::DEFAULT_COST;
@@ -68,7 +68,7 @@ impl Command for Login {
         "login"
     }
 
-    async fn execute(&self, session: &mut Session, args: Option<&[&str]>) -> Result<()> {
+    async fn execute(&self, session: &mut Session, _: Option<&[&str]>) -> Result<()> {
         loop {
             let username = session.prompt("Username: ").await?;
             let password = session.prompt("Password: ").await?;
@@ -119,7 +119,7 @@ impl Command for Register {
         "register"
     }
 
-    async fn execute(&self, session: &mut Session, args: Option<&[&str]>) -> Result<()> {
+    async fn execute(&self, session: &mut Session, _: Option<&[&str]>) -> Result<()> {
         let username = session.prompt("Choose a username: ").await?;
         let password = session.prompt("Choose a password: ").await?;
 

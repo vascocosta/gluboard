@@ -96,13 +96,6 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new() -> Self {
-        Self {
-            users: RwLock::new(Vec::new()),
-            messages: RwLock::new(Vec::new()),
-        }
-    }
-
     pub async fn from_file() -> Result<Self> {
         let users: Vec<User> = if Path::new(USERS_FILE).exists() {
             let users_json = read_to_string(USERS_FILE).await?;
