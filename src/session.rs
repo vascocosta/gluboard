@@ -27,8 +27,6 @@ impl Session {
         app_state: Arc<AppState>,
         command_handler: Arc<CommandHandler>,
     ) -> Self {
-        // let command_handler = Arc::new(CommandHandler::new());
-
         Self {
             stream: BufReader::new(stream),
             app_state,
@@ -48,8 +46,6 @@ impl Session {
 
     pub async fn run(&mut self) -> Result<()> {
         self.welcome().await.context("Could not perform welcome")?;
-
-        // let command_handler = CommandHandler::new();
 
         let command_handler = Arc::clone(&self.command_handler);
 
@@ -80,7 +76,6 @@ impl Session {
         self.writeln("login | register | disconnect").await?;
         self.writeln("").await?;
 
-        // let command_handler = CommandHandler::new();
         let command_handler = Arc::clone(&self.command_handler);
 
         loop {
