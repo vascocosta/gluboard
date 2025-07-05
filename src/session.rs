@@ -1,6 +1,7 @@
+use std::{path::Path, sync::Arc};
+
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use std::{path::Path, sync::Arc};
 use tokio::{
     fs::{File, read_to_string},
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -17,14 +18,22 @@ pub struct Session {
     stream: BufReader<TcpStream>,
     pub app_state: Arc<AppState>,
     pub login_status: LoginStatus,
+    command_handler: Arc<CommandHandler>,
 }
 
 impl Session {
-    pub fn new(stream: TcpStream, app_state: Arc<AppState>) -> Self {
+    pub fn new(
+        stream: TcpStream,
+        app_state: Arc<AppState>,
+        command_handler: Arc<CommandHandler>,
+    ) -> Self {
+        // let command_handler = Arc::new(CommandHandler::new());
+
         Self {
             stream: BufReader::new(stream),
             app_state,
             login_status: LoginStatus::Failure,
+            command_handler,
         }
     }
 
@@ -40,7 +49,9 @@ impl Session {
     pub async fn run(&mut self) -> Result<()> {
         self.welcome().await.context("Could not perform welcome")?;
 
-        let command_handler = CommandHandler::new();
+        // let command_handler = CommandHandler::new();
+
+        let command_handler = Arc::clone(&self.command_handler);
 
         loop {
             let raw_command = self.prompt("> ").await?;
@@ -69,7 +80,8 @@ impl Session {
         self.writeln("login | register | disconnect").await?;
         self.writeln("").await?;
 
-        let command_handler = CommandHandler::new();
+        // let command_handler = CommandHandler::new();
+        let command_handler = Arc::clone(&self.command_handler);
 
         loop {
             let raw_command = self.prompt("> ").await?;

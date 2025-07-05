@@ -1,8 +1,10 @@
-use crate::session::{AppStateKind, LoginStatus, Message, Session, User};
+use std::collections::HashMap;
+
 use anyhow::{Context, Result};
 use async_trait::async_trait;
 use bcrypt::DEFAULT_COST;
-use std::collections::HashMap;
+
+use crate::session::{AppStateKind, LoginStatus, Message, Session, User};
 
 pub struct CommandHandler {
     welcome_commands: HashMap<&'static str, Box<dyn Command + Send + Sync>>,
@@ -10,18 +12,10 @@ pub struct CommandHandler {
 }
 
 impl CommandHandler {
-    pub fn new() -> Self {
-        let mut welcome_commands: HashMap<&'static str, Box<dyn Command + Send + Sync>> =
-            HashMap::new();
-
-        welcome_commands.insert("login", Box::new(Login));
-        welcome_commands.insert("register", Box::new(Register));
-
-        let mut message_commands: HashMap<&'static str, Box<dyn Command + Send + Sync>> =
-            HashMap::new();
-
-        message_commands.insert("message", Box::new(Messages));
-
+    pub fn new(
+        welcome_commands: HashMap<&'static str, Box<dyn Command + Send + Sync>>,
+        message_commands: HashMap<&'static str, Box<dyn Command + Send + Sync>>,
+    ) -> Self {
         Self {
             welcome_commands,
             message_commands,
@@ -55,7 +49,9 @@ impl CommandHandler {
 #[allow(dead_code)]
 #[async_trait]
 pub trait Command {
-    fn name(&self) -> &str;
+    fn name() -> &'static str
+    where
+        Self: Sized;
     async fn execute(&self, session: &mut Session, args: Option<&[&str]>) -> Result<()>;
     fn help(&self) -> String;
 }
@@ -64,7 +60,7 @@ pub struct Login;
 
 #[async_trait]
 impl Command for Login {
-    fn name(&self) -> &str {
+    fn name() -> &'static str {
         "login"
     }
 
@@ -115,7 +111,7 @@ impl Register {
 
 #[async_trait]
 impl Command for Register {
-    fn name(&self) -> &str {
+    fn name() -> &'static str {
         "register"
     }
 
@@ -155,7 +151,7 @@ impl Messages {
 
 #[async_trait]
 impl Command for Messages {
-    fn name(&self) -> &str {
+    fn name() -> &'static str {
         "message"
     }
 

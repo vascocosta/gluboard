@@ -1,11 +1,13 @@
 mod commands;
 mod session;
 
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use anyhow::{Context, Result};
 use session::{AppState, Session};
 use tokio::{net::TcpListener, spawn};
+
+use crate::commands::{Command, CommandHandler, Login, Messages, Register};
 
 const ADDRESS: &str = "127.0.0.1:2323";
 
@@ -16,15 +18,29 @@ async fn main() -> Result<()> {
             let app_state = Arc::new(app_state);
             let listener = TcpListener::bind(ADDRESS).await?;
 
+            let mut welcome_commands: HashMap<&'static str, Box<dyn Command + Send + Sync>> =
+                HashMap::new();
+
+            welcome_commands.insert(Login::name(), Box::new(Login));
+            welcome_commands.insert(Register::name(), Box::new(Register));
+
+            let mut message_commands: HashMap<&'static str, Box<dyn Command + Send + Sync>> =
+                HashMap::new();
+
+            message_commands.insert(Messages::name(), Box::new(Messages));
+
+            let command_handler = Arc::new(CommandHandler::new(welcome_commands, message_commands));
+
             loop {
                 match listener.accept().await.context("Client connection failed") {
                     Ok((stream, address)) => {
                         let app_state = Arc::clone(&app_state);
+                        let command_handler = Arc::clone(&command_handler);
 
                         println!("Connection from: {address}");
 
                         spawn(async move {
-                            let mut session = Session::new(stream, app_state);
+                            let mut session = Session::new(stream, app_state, command_handler);
 
                             if let Err(e) = session.run().await {
                                 eprintln!("{e}");
