@@ -49,7 +49,7 @@ impl CommandHandler {
 #[allow(dead_code)]
 #[async_trait]
 pub trait Command {
-    fn name() -> &'static [&'static str]
+    fn names() -> &'static [&'static str]
     where
         Self: Sized;
     async fn execute(&self, session: &mut Session, args: Option<&[&str]>) -> Result<()>;
@@ -60,7 +60,7 @@ pub struct Login;
 
 #[async_trait]
 impl Command for Login {
-    fn name() -> &'static [&'static str] {
+    fn names() -> &'static [&'static str] {
         &["login"]
     }
 
@@ -112,7 +112,7 @@ impl Register {
 
 #[async_trait]
 impl Command for Register {
-    fn name() -> &'static [&'static str] {
+    fn names() -> &'static [&'static str] {
         &["register"]
     }
 
@@ -153,7 +153,7 @@ impl Messages {
 
 #[async_trait]
 impl Command for Messages {
-    fn name() -> &'static [&'static str] {
+    fn names() -> &'static [&'static str] {
         &["message", "messages", "msg"]
     }
 
@@ -251,7 +251,7 @@ pub fn insert_command<C>(
 {
     let command = Arc::new(command);
 
-    for alias in C::name() {
+    for alias in C::names() {
         let command_clone = Arc::clone(&command);
 
         map.insert(&alias, command_clone);
