@@ -12,13 +12,36 @@ pub struct CommandHandler {
 }
 
 impl CommandHandler {
-    pub fn new(
-        welcome_commands: HashMap<&'static str, Arc<dyn Command + Send + Sync>>,
-        message_commands: HashMap<&'static str, Arc<dyn Command + Send + Sync>>,
-    ) -> Self {
+    pub fn new() -> Self {
         Self {
-            welcome_commands,
-            message_commands,
+            welcome_commands: HashMap::default(),
+            message_commands: HashMap::default(),
+        }
+    }
+
+    pub fn welcome_commands<C>(&mut self, command: C)
+    where
+        C: Command + Send + Sync + 'static,
+    {
+        let command = Arc::new(command);
+
+        for alias in C::names() {
+            let command_clone = Arc::clone(&command);
+
+            self.welcome_commands.insert(&alias, command_clone);
+        }
+    }
+
+    pub fn message_commands<C>(&mut self, command: C)
+    where
+        C: Command + Send + Sync + 'static,
+    {
+        let command = Arc::new(command);
+
+        for alias in C::names() {
+            let command_clone = Arc::clone(&command);
+
+            self.message_commands.insert(&alias, command_clone);
         }
     }
 
@@ -240,20 +263,5 @@ impl Command for Messages {
 
     fn help(&self) -> String {
         todo!()
-    }
-}
-
-pub fn insert_command<C>(
-    command: C,
-    map: &mut HashMap<&'static str, Arc<dyn Command + Send + Sync>>,
-) where
-    C: Command + Send + Sync + 'static,
-{
-    let command = Arc::new(command);
-
-    for alias in C::names() {
-        let command_clone = Arc::clone(&command);
-
-        map.insert(&alias, command_clone);
     }
 }

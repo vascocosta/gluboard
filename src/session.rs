@@ -6,7 +6,7 @@ use tokio::{
     fs::{File, read_to_string},
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::TcpStream,
-    sync::RwLock,
+    sync::{Mutex, RwLock},
 };
 
 use crate::commands::CommandHandler;
@@ -18,14 +18,14 @@ pub struct Session {
     stream: BufReader<TcpStream>,
     pub app_state: Arc<AppState>,
     pub login_status: LoginStatus,
-    command_handler: Arc<CommandHandler>,
+    command_handler: Arc<Mutex<CommandHandler>>,
 }
 
 impl Session {
     pub fn new(
         stream: TcpStream,
         app_state: Arc<AppState>,
-        command_handler: Arc<CommandHandler>,
+        command_handler: Arc<Mutex<CommandHandler>>,
     ) -> Self {
         Self {
             stream: BufReader::new(stream),
@@ -51,7 +51,11 @@ impl Session {
 
         loop {
             let raw_command = self.prompt("> ").await?;
-            command_handler.handle(&raw_command, self).await?;
+            command_handler
+                .lock()
+                .await
+                .handle(&raw_command, self)
+                .await?;
         }
     }
 
@@ -81,7 +85,12 @@ impl Session {
         loop {
             let raw_command = self.prompt("> ").await?;
 
-            if let Err(e) = command_handler.handle(&raw_command, self).await {
+            if let Err(e) = command_handler
+                .lock()
+                .await
+                .handle(&raw_command, self)
+                .await
+            {
                 self.writeln(&format!("{e}")).await?
             }
         }
