@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use anyhow::{Context, Result};
 use async_trait::async_trait;
@@ -7,14 +7,14 @@ use bcrypt::DEFAULT_COST;
 use crate::session::{AppStateKind, LoginStatus, Message, Session, User};
 
 pub struct CommandHandler {
-    welcome_commands: HashMap<&'static str, Box<dyn Command + Send + Sync>>,
-    message_commands: HashMap<&'static str, Box<dyn Command + Send + Sync>>,
+    welcome_commands: HashMap<&'static str, Arc<dyn Command + Send + Sync>>,
+    message_commands: HashMap<&'static str, Arc<dyn Command + Send + Sync>>,
 }
 
 impl CommandHandler {
     pub fn new(
-        welcome_commands: HashMap<&'static str, Box<dyn Command + Send + Sync>>,
-        message_commands: HashMap<&'static str, Box<dyn Command + Send + Sync>>,
+        welcome_commands: HashMap<&'static str, Arc<dyn Command + Send + Sync>>,
+        message_commands: HashMap<&'static str, Arc<dyn Command + Send + Sync>>,
     ) -> Self {
         Self {
             welcome_commands,
@@ -49,7 +49,7 @@ impl CommandHandler {
 #[allow(dead_code)]
 #[async_trait]
 pub trait Command {
-    fn name() -> &'static str
+    fn name() -> &'static [&'static str]
     where
         Self: Sized;
     async fn execute(&self, session: &mut Session, args: Option<&[&str]>) -> Result<()>;
@@ -60,8 +60,8 @@ pub struct Login;
 
 #[async_trait]
 impl Command for Login {
-    fn name() -> &'static str {
-        "login"
+    fn name() -> &'static [&'static str] {
+        &["login"]
     }
 
     async fn execute(&self, session: &mut Session, _: Option<&[&str]>) -> Result<()> {
@@ -99,6 +99,7 @@ impl Command for Login {
     }
 }
 
+#[derive(Clone)]
 pub struct Register;
 
 impl Register {
@@ -111,8 +112,8 @@ impl Register {
 
 #[async_trait]
 impl Command for Register {
-    fn name() -> &'static str {
-        "register"
+    fn name() -> &'static [&'static str] {
+        &["register"]
     }
 
     async fn execute(&self, session: &mut Session, _: Option<&[&str]>) -> Result<()> {
@@ -139,6 +140,7 @@ impl Command for Register {
     }
 }
 
+#[derive(Clone)]
 pub struct Messages;
 
 impl Messages {
@@ -151,8 +153,8 @@ impl Messages {
 
 #[async_trait]
 impl Command for Messages {
-    fn name() -> &'static str {
-        "message"
+    fn name() -> &'static [&'static str] {
+        &["message", "messages", "msg"]
     }
 
     async fn execute(&self, session: &mut Session, args: Option<&[&str]>) -> Result<()> {
@@ -238,5 +240,20 @@ impl Command for Messages {
 
     fn help(&self) -> String {
         todo!()
+    }
+}
+
+pub fn insert_command<C>(
+    command: C,
+    map: &mut HashMap<&'static str, Arc<dyn Command + Send + Sync>>,
+) where
+    C: Command + Send + Sync + 'static,
+{
+    let command = Arc::new(command);
+
+    for alias in C::name() {
+        let command_clone = Arc::clone(&command);
+
+        map.insert(&alias, command_clone);
     }
 }

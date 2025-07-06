@@ -18,16 +18,16 @@ async fn main() -> Result<()> {
             let app_state = Arc::new(app_state);
             let listener = TcpListener::bind(ADDRESS).await?;
 
-            let mut welcome_commands: HashMap<&'static str, Box<dyn Command + Send + Sync>> =
+            let mut welcome_commands: HashMap<&'static str, Arc<dyn Command + Send + Sync>> =
                 HashMap::new();
 
-            welcome_commands.insert(Login::name(), Box::new(Login));
-            welcome_commands.insert(Register::name(), Box::new(Register));
+            commands::insert_command(Login, &mut welcome_commands);
+            commands::insert_command(Register, &mut welcome_commands);
 
-            let mut message_commands: HashMap<&'static str, Box<dyn Command + Send + Sync>> =
+            let mut message_commands: HashMap<&'static str, Arc<dyn Command + Send + Sync>> =
                 HashMap::new();
 
-            message_commands.insert(Messages::name(), Box::new(Messages));
+            commands::insert_command(Messages, &mut message_commands);
 
             let command_handler = Arc::new(CommandHandler::new(welcome_commands, message_commands));
 
