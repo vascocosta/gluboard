@@ -19,9 +19,9 @@ async fn main() -> Result<()> {
             let listener = TcpListener::bind(ADDRESS).await?;
             let command_handler = Arc::new(Mutex::new(CommandHandler::new()));
 
-            command_handler.lock().await.welcome_commands(Login);
-            command_handler.lock().await.welcome_commands(Register);
-            command_handler.lock().await.message_commands(Messages);
+            command_handler.lock().await.add_welcome_cmd(Login);
+            command_handler.lock().await.add_welcome_cmd(Register);
+            command_handler.lock().await.add_message_cmd(Messages);
 
             loop {
                 match listener.accept().await.context("Client connection failed") {
