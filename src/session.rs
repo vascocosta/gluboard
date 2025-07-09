@@ -76,8 +76,17 @@ impl Session {
         self.writeln("WELCOME TO THIS BBS").await?;
         self.writeln("").await?;
 
+        let commands: Vec<String> = self
+            .command_handler
+            .lock()
+            .await
+            .welcome_commands
+            .keys()
+            .map(|k| k.to_lowercase())
+            .collect();
+
         self.writeln("Commands:").await?;
-        self.writeln("login | register | disconnect").await?;
+        self.writeln(&commands.join(" | ")).await?;
         self.writeln("").await?;
 
         let command_handler = Arc::clone(&self.command_handler);

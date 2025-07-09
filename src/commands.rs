@@ -7,8 +7,8 @@ use bcrypt::DEFAULT_COST;
 use crate::session::{AppStateKind, LoginStatus, Message, Session, User};
 
 pub struct CommandHandler {
-    welcome_commands: HashMap<&'static str, Arc<dyn Command + Send + Sync>>,
-    message_commands: HashMap<&'static str, Arc<dyn Command + Send + Sync>>,
+    pub welcome_commands: HashMap<&'static str, Arc<dyn Command + Send + Sync>>,
+    pub message_commands: HashMap<&'static str, Arc<dyn Command + Send + Sync>>,
 }
 
 impl CommandHandler {
