@@ -23,14 +23,27 @@ impl CommandHandler {
     where
         C: Command + Send + Sync + 'static,
     {
-        Self::register_cmd(command, &mut self.message_commands);
+        Self::add_cmd(command, &mut self.message_commands);
     }
 
     pub fn add_welcome_cmd<C>(&mut self, command: C)
     where
         C: Command + Send + Sync + 'static,
     {
-        Self::register_cmd(command, &mut self.welcome_commands);
+        Self::add_cmd(command, &mut self.welcome_commands);
+    }
+
+    fn add_cmd<C>(command: C, map: &mut HashMap<&'static str, Arc<dyn Command + Send + Sync>>)
+    where
+        C: Command + Send + Sync + 'static,
+    {
+        let command = Arc::new(command);
+
+        for alias in C::names() {
+            let command_clone = Arc::clone(&command);
+
+            map.insert(alias, command_clone);
+        }
     }
 
     pub async fn handle(&self, raw_command: &str, session: &mut Session) -> Result<()> {
@@ -53,19 +66,6 @@ impl CommandHandler {
                     .execute(session, if args.is_empty() { None } else { Some(&args) })
                     .await
             }
-        }
-    }
-
-    fn register_cmd<C>(command: C, map: &mut HashMap<&'static str, Arc<dyn Command + Send + Sync>>)
-    where
-        C: Command + Send + Sync + 'static,
-    {
-        let command = Arc::new(command);
-
-        for alias in C::names() {
-            let command_clone = Arc::clone(&command);
-
-            map.insert(alias, command_clone);
         }
     }
 }
