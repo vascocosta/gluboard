@@ -6,6 +6,7 @@ use bcrypt::DEFAULT_COST;
 
 use crate::session::{AppStateKind, LoginStatus, Message, Session, User};
 
+#[derive(Clone)]
 pub struct CommandHandler {
     pub welcome_commands: HashMap<&'static str, Arc<dyn Command + Send + Sync>>,
     pub message_commands: HashMap<&'static str, Arc<dyn Command + Send + Sync>>,
@@ -119,7 +120,7 @@ impl Command for Login {
     }
 
     fn help(&self) -> String {
-        todo!()
+        String::from("This command allows a user to login.")
     }
 }
 
@@ -160,7 +161,7 @@ impl Command for Register {
     }
 
     fn help(&self) -> String {
-        todo!()
+        String::from("This command allows a user to register his/her username.")
     }
 }
 
@@ -264,5 +265,46 @@ impl Command for Messages {
 
     fn help(&self) -> String {
         todo!()
+    }
+}
+
+pub struct Help {
+    pub command_handler: CommandHandler,
+}
+
+#[async_trait]
+impl Command for Help {
+    fn names() -> &'static [&'static str] {
+        &["help", "commands"]
+    }
+
+    async fn execute(&self, session: &mut Session, args: Option<&[&str]>) -> Result<()> {
+        match args {
+            None => session.writeln(&self.help()).await,
+            Some(args) => {
+                // let command = command_handler.welcome_commands.get(args[0]).unwrap();
+                // session.writeln(&command.help()).await
+                // let message = {
+                //     let command_handler = session.command_handler.clone();
+                //     let command_handler_lock = command_handler.lock().await;
+
+                //     let command = command_handler_lock.message_commands.get(args[0]).unwrap();
+                //     command.help()
+                // };
+                // session.writeln(&message).await
+                let message = self
+                    .command_handler
+                    .welcome_commands
+                    .get(args.get(0).context("Unknown command")?)
+                    .context("Unknown command")?
+                    .help();
+
+                session.writeln(&message).await
+            }
+        }
+    }
+
+    fn help(&self) -> String {
+        String::from("This command shows a message help for each command.")
     }
 }

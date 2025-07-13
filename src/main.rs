@@ -7,7 +7,7 @@ use anyhow::{Context, Result};
 use session::{AppState, Session};
 use tokio::{net::TcpListener, spawn, sync::Mutex};
 
-use crate::commands::{CommandHandler, Login, Messages, Register};
+use crate::commands::{CommandHandler, Help, Login, Messages, Register};
 
 const ADDRESS: &str = "127.0.0.1:2323";
 
@@ -19,9 +19,22 @@ async fn main() -> Result<()> {
             let listener = TcpListener::bind(ADDRESS).await?;
             let command_handler = Arc::new(Mutex::new(CommandHandler::new()));
 
-            command_handler.lock().await.add_welcome_cmd(Login);
-            command_handler.lock().await.add_welcome_cmd(Register);
-            command_handler.lock().await.add_message_cmd(Messages);
+            {
+                let mut lock = command_handler.lock().await;
+
+                lock.add_welcome_cmd(Login);
+                lock.add_welcome_cmd(Register);
+                lock.add_message_cmd(Messages);
+
+                let command_handler_clone = lock.clone();
+                lock.add_welcome_cmd(Help {
+                    command_handler: command_handler_clone,
+                });
+                let command_handler_clone = lock.clone();
+                lock.add_message_cmd(Help {
+                    command_handler: command_handler_clone,
+                });
+            }
 
             loop {
                 match listener.accept().await.context("Client connection failed") {
