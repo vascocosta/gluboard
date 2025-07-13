@@ -9,7 +9,7 @@ use tokio::{
     sync::{Mutex, RwLock},
 };
 
-use crate::commands::CommandHandler;
+use crate::{ansi::AnsiStyle, commands::CommandHandler};
 
 const USERS_FILE: &str = "users.json";
 const MESSAGES_FILE: &str = "messages.json";
@@ -35,10 +35,10 @@ impl Session {
         }
     }
 
-    pub async fn prompt(&mut self, text: &str) -> Result<String> {
+    pub async fn prompt(&mut self, text: &str, style: Option<AnsiStyle>) -> Result<String> {
         let mut answer = String::new();
 
-        self.write(text).await?;
+        self.write(text, style).await?;
         self.stream.read_line(&mut answer).await?;
 
         Ok(answer.trim().to_owned())
@@ -50,7 +50,7 @@ impl Session {
         let command_handler = Arc::clone(&self.command_handler);
 
         loop {
-            let raw_command = self.prompt("> ").await?;
+            let raw_command = self.prompt("> ", None).await?;
             command_handler
                 .lock()
                 .await
@@ -73,8 +73,8 @@ impl Session {
     }
 
     pub async fn welcome(&mut self) -> Result<()> {
-        self.writeln("WELCOME TO THIS BBS").await?;
-        self.writeln("").await?;
+        self.writeln("WELCOME TO THIS BBS", None).await?;
+        self.writeln("", None).await?;
 
         let commands: Vec<String> = self
             .command_handler
@@ -85,14 +85,14 @@ impl Session {
             .map(|k| k.to_lowercase())
             .collect();
 
-        self.writeln("Commands:").await?;
-        self.writeln(&commands.join(" | ")).await?;
-        self.writeln("").await?;
+        self.writeln("Commands:", None).await?;
+        self.writeln(&commands.join(" | "), None).await?;
+        self.writeln("", None).await?;
 
         let command_handler = Arc::clone(&self.command_handler);
 
         loop {
-            let raw_command = self.prompt("> ").await?;
+            let raw_command = self.prompt("> ", None).await?;
 
             if let Err(e) = command_handler
                 .lock()
@@ -100,17 +100,23 @@ impl Session {
                 .handle(&raw_command, self)
                 .await
             {
-                self.writeln(&format!("{e}")).await?
+                self.writeln(&format!("{e}"), None).await?
             }
         }
     }
 
-    pub async fn write(&mut self, data: &str) -> Result<()> {
-        self.send(data, false).await
+    pub async fn write(&mut self, data: &str, style: Option<AnsiStyle>) -> Result<()> {
+        match style {
+            None => self.send(data, false).await,
+            Some(style) => self.send(&style.apply(data), false).await,
+        }
     }
 
-    pub async fn writeln(&mut self, data: &str) -> Result<()> {
-        self.send(data, true).await
+    pub async fn writeln(&mut self, data: &str, style: Option<AnsiStyle>) -> Result<()> {
+        match style {
+            None => self.send(data, true).await,
+            Some(style) => self.send(&style.apply(data), true).await,
+        }
     }
 }
 

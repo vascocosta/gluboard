@@ -91,8 +91,8 @@ impl Command for LoginCmd {
 
     async fn execute(&self, session: &mut Session, _: Option<&[&str]>) -> Result<()> {
         loop {
-            let username = session.prompt("Username: ").await?;
-            let password = session.prompt("Password: ").await?;
+            let username = session.prompt("Username: ", None).await?;
+            let password = session.prompt("Password: ", None).await?;
 
             let valid_password = {
                 let users = session.app_state.users.read().await;
@@ -108,10 +108,10 @@ impl Command for LoginCmd {
 
             if !valid_password {
                 session.login_status = LoginStatus::Failure;
-                session.writeln("Login failed").await?;
+                session.writeln("Login failed", None).await?;
             } else {
                 session.login_status = LoginStatus::Success(username);
-                session.writeln("Login successful").await?;
+                session.writeln("Login successful", None).await?;
                 break;
             }
         }
@@ -142,8 +142,8 @@ impl Command for RegisterCmd {
     }
 
     async fn execute(&self, session: &mut Session, _: Option<&[&str]>) -> Result<()> {
-        let username = session.prompt("Choose a username: ").await?;
-        let password = session.prompt("Choose a password: ").await?;
+        let username = session.prompt("Choose a username: ", None).await?;
+        let password = session.prompt("Choose a password: ", None).await?;
 
         let user = User {
             id: self.generate_id(session).await.unwrap_or_default(),
@@ -154,8 +154,8 @@ impl Command for RegisterCmd {
         session.app_state.users.write().await.push(user);
         session.app_state.save(AppStateKind::Users).await?;
         session.login_status = LoginStatus::Success(username);
-        session.writeln("Registration successful").await?;
-        session.writeln("Login successful").await?;
+        session.writeln("Registration successful", None).await?;
+        session.writeln("Login successful", None).await?;
 
         Ok(())
     }
@@ -184,7 +184,7 @@ impl Command for MessageCmd {
 
     async fn execute(&self, session: &mut Session, args: Option<&[&str]>) -> Result<()> {
         match args {
-            None => session.writeln("No sub commands").await,
+            None => session.writeln("No sub commands", None).await,
             Some([sub_command]) => match *sub_command {
                 "list" => {
                     let messages = {
@@ -194,24 +194,24 @@ impl Command for MessageCmd {
 
                     for message in messages {
                         session
-                            .writeln(&format!(
-                                "{} {} {}",
-                                message.id, message.username, message.subject
-                            ))
+                            .writeln(
+                                &format!("{} {} {}", message.id, message.username, message.subject),
+                                None,
+                            )
                             .await?;
                     }
 
                     Ok(())
                 }
                 "new" => {
-                    let subject = session.prompt("Subject: ").await?;
+                    let subject = session.prompt("Subject: ", None).await?;
                     let mut body = String::new();
 
                     session
-                        .write("\r\nWrite your message. Type \".\" on a line by its own to finish.\r\n\r\n")
+                        .write("\r\nWrite your message. Type \".\" on a line by its own to finish.\r\n\r\n", None)
                         .await?;
 
-                    while let Ok(line) = session.prompt("").await {
+                    while let Ok(line) = session.prompt("", None).await {
                         if line.trim() != "." {
                             body = format!("{}{}\r\n", body, line);
                         } else {
@@ -236,7 +236,7 @@ impl Command for MessageCmd {
 
                     Ok(())
                 }
-                _ => session.writeln("Unknown sub command").await,
+                _ => session.writeln("Unknown sub command", None).await,
             },
             Some([sub_command, sub_arg]) => match *sub_command {
                 "read" => {
@@ -251,15 +251,15 @@ impl Command for MessageCmd {
                     };
 
                     session
-                        .writeln(&format!(
-                            "Subject: {}\r\n\r\n{}",
-                            message.subject, message.body
-                        ))
+                        .writeln(
+                            &format!("Subject: {}\r\n\r\n{}", message.subject, message.body),
+                            None,
+                        )
                         .await
                 }
-                _ => session.writeln("Unknown sub command").await,
+                _ => session.writeln("Unknown sub command", None).await,
             },
-            Some(&[]) | Some(&[_, _, _, ..]) => session.writeln("Show usage").await,
+            Some(&[]) | Some(&[_, _, _, ..]) => session.writeln("Show usage", None).await,
         }
     }
 
@@ -280,7 +280,7 @@ impl Command for Help {
 
     async fn execute(&self, session: &mut Session, args: Option<&[&str]>) -> Result<()> {
         match args {
-            None => session.writeln(&self.help()).await,
+            None => session.writeln(&self.help(), None).await,
             Some(args) => {
                 let message = self
                     .command_handler
@@ -289,7 +289,7 @@ impl Command for Help {
                     .context("Unknown command")?
                     .help();
 
-                session.writeln(&message).await
+                session.writeln(&message, None).await
             }
         }
     }

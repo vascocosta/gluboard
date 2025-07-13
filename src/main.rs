@@ -1,3 +1,4 @@
+mod ansi;
 mod commands;
 mod session;
 
