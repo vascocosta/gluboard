@@ -7,7 +7,7 @@ use anyhow::{Context, Result};
 use session::{AppState, Session};
 use tokio::{net::TcpListener, spawn, sync::Mutex};
 
-use crate::commands::{CommandHandler, Help, Login, Messages, Register};
+use crate::commands::{CommandHandler, Help, LoginCmd, MessageCmd, RegisterCmd};
 
 const ADDRESS: &str = "127.0.0.1:2323";
 
@@ -22,9 +22,9 @@ async fn main() -> Result<()> {
             {
                 let mut lock = command_handler.lock().await;
 
-                lock.add_welcome_cmd(Login);
-                lock.add_welcome_cmd(Register);
-                lock.add_message_cmd(Messages);
+                lock.add_welcome_cmd(LoginCmd);
+                lock.add_welcome_cmd(RegisterCmd);
+                lock.add_message_cmd(MessageCmd);
 
                 let command_handler_clone = lock.clone();
                 lock.add_welcome_cmd(Help {

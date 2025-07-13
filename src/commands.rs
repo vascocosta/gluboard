@@ -81,10 +81,10 @@ pub trait Command {
     fn help(&self) -> String;
 }
 
-pub struct Login;
+pub struct LoginCmd;
 
 #[async_trait]
-impl Command for Login {
+impl Command for LoginCmd {
     fn names() -> &'static [&'static str] {
         &["login"]
     }
@@ -125,9 +125,9 @@ impl Command for Login {
 }
 
 #[derive(Clone)]
-pub struct Register;
+pub struct RegisterCmd;
 
-impl Register {
+impl RegisterCmd {
     async fn generate_id(&self, session: &mut Session) -> Option<i64> {
         let users = &*session.app_state.users.read().await;
 
@@ -136,7 +136,7 @@ impl Register {
 }
 
 #[async_trait]
-impl Command for Register {
+impl Command for RegisterCmd {
     fn names() -> &'static [&'static str] {
         &["register"]
     }
@@ -166,9 +166,9 @@ impl Command for Register {
 }
 
 #[derive(Clone)]
-pub struct Messages;
+pub struct MessageCmd;
 
-impl Messages {
+impl MessageCmd {
     async fn generate_id(&self, session: &mut Session) -> Option<i64> {
         let messages = &*session.app_state.messages.read().await;
 
@@ -177,7 +177,7 @@ impl Messages {
 }
 
 #[async_trait]
-impl Command for Messages {
+impl Command for MessageCmd {
     fn names() -> &'static [&'static str] {
         &["message", "messages", "msg"]
     }
