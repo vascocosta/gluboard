@@ -282,16 +282,6 @@ impl Command for Help {
         match args {
             None => session.writeln(&self.help()).await,
             Some(args) => {
-                // let command = command_handler.welcome_commands.get(args[0]).unwrap();
-                // session.writeln(&command.help()).await
-                // let message = {
-                //     let command_handler = session.command_handler.clone();
-                //     let command_handler_lock = command_handler.lock().await;
-
-                //     let command = command_handler_lock.message_commands.get(args[0]).unwrap();
-                //     command.help()
-                // };
-                // session.writeln(&message).await
                 let message = self
                     .command_handler
                     .welcome_commands
