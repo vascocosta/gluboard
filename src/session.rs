@@ -3,7 +3,7 @@ use std::{path::Path, sync::Arc};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use tokio::{
-    fs::{File, read_to_string},
+    fs::{File, read, read_to_string},
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::TcpStream,
     sync::{Mutex, RwLock},
@@ -11,6 +11,7 @@ use tokio::{
 
 use crate::{ansi::AnsiStyle, commands::CommandHandler};
 
+const BANNER_FILE: &str = "banner.ans";
 const USERS_FILE: &str = "users.json";
 const MESSAGES_FILE: &str = "messages.json";
 
@@ -73,6 +74,13 @@ impl Session {
     }
 
     pub async fn welcome(&mut self) -> Result<()> {
+        if let Ok(banner) = read(BANNER_FILE).await {
+            self.writeln(&String::from_utf8_lossy(&banner), None)
+                .await?;
+            self.writeln("", None).await?;
+            self.writeln("", None).await?;
+        }
+
         self.writeln("WELCOME TO THIS BBS", None).await?;
         self.writeln("", None).await?;
 
