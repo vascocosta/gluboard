@@ -38,7 +38,7 @@ impl AnsiStyle {
             None => 49,
         };
 
-        format!("\u{001b}[{};{}m{}\u{001b}[{};{}m", fg, bg, text, 37, 49)
+        format!("\u{001b}[{};{}m{}\u{001b}[{};{}m", fg, bg, text, 37, 40)
     }
 }
 
