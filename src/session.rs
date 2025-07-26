@@ -78,7 +78,6 @@ impl Session {
             self.writeln(&String::from_utf8_lossy(&banner), None)
                 .await?;
             self.writeln("", None).await?;
-            self.writeln("", None).await?;
         }
 
         self.writeln("WELCOME TO THIS BBS", None).await?;
