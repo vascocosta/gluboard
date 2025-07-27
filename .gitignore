@@ -1,3 +1,6 @@
 /target
 /*.ans
-/*.json
+/config.json
+/config.toml
+/messages.json
+/users.json

@@ -3,6 +3,7 @@ pub struct AnsiStyle {
     fg: Option<AnsiColor>,
 }
 
+#[allow(dead_code)]
 impl AnsiStyle {
     pub fn new(fg: Option<AnsiColor>, bg: Option<AnsiColor>) -> Self {
         Self { bg, fg }
@@ -42,6 +43,7 @@ impl AnsiStyle {
     }
 }
 
+#[allow(dead_code)]
 pub enum AnsiColor {
     Black,
     Red,

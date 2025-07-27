@@ -9,14 +9,14 @@ use tokio::{
     sync::{Mutex, RwLock},
 };
 
-use crate::{ansi::AnsiStyle, commands::CommandHandler};
+use crate::{ansi::AnsiStyle, commands::CommandHandler, config::Config};
 
-const BANNER_FILE: &str = "banner.ans";
 const USERS_FILE: &str = "users.json";
 const MESSAGES_FILE: &str = "messages.json";
 
 pub struct Session {
     stream: BufReader<TcpStream>,
+    config: Arc<Config>,
     pub app_state: Arc<AppState>,
     pub login_status: LoginStatus,
     command_handler: Arc<Mutex<CommandHandler>>,
@@ -25,11 +25,13 @@ pub struct Session {
 impl Session {
     pub fn new(
         stream: TcpStream,
+        config: Arc<Config>,
         app_state: Arc<AppState>,
         command_handler: Arc<Mutex<CommandHandler>>,
     ) -> Self {
         Self {
             stream: BufReader::new(stream),
+            config,
             app_state,
             login_status: LoginStatus::Failure,
             command_handler,
@@ -74,13 +76,19 @@ impl Session {
     }
 
     pub async fn welcome(&mut self) -> Result<()> {
-        if let Ok(banner) = read(BANNER_FILE).await {
-            self.writeln(&String::from_utf8_lossy(&banner), None)
-                .await?;
+        if let Some(banner_file) = &self.config.banner_file {
+            if let Ok(banner_data) = read(banner_file).await {
+                self.writeln(&String::from_utf8_lossy(&banner_data), None)
+                    .await?;
+                self.writeln("", None).await?;
+            }
+        }
+
+        if let Some(welcome_msg) = self.config.welcome_msg.clone() {
+            self.writeln(&welcome_msg, None).await?;
             self.writeln("", None).await?;
         }
 
-        self.writeln("WELCOME TO THIS BBS", None).await?;
         self.writeln("", None).await?;
 
         let commands: Vec<String> = self
@@ -127,7 +135,6 @@ impl Session {
     }
 }
 
-#[allow(dead_code)]
 pub struct AppState {
     pub users: RwLock<Vec<User>>,
     pub messages: RwLock<Vec<Message>>,
