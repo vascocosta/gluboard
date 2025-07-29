@@ -268,12 +268,12 @@ impl Command for MessageCmd {
     }
 }
 
-pub struct Help {
+pub struct HelpCmd {
     pub command_handler: CommandHandler,
 }
 
 #[async_trait]
-impl Command for Help {
+impl Command for HelpCmd {
     fn names() -> &'static [&'static str] {
         &["help", "commands"]
     }

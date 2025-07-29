@@ -10,7 +10,7 @@ use session::{AppState, Session};
 use tokio::{net::TcpListener, spawn, sync::Mutex};
 
 use crate::{
-    commands::{CommandHandler, Help, LoginCmd, MessageCmd, RegisterCmd},
+    commands::{CommandHandler, HelpCmd, LoginCmd, MessageCmd, RegisterCmd},
     config::Config,
 };
 
@@ -35,11 +35,11 @@ async fn main() -> Result<()> {
                 lock.add_message_cmd(MessageCmd);
 
                 let command_handler_clone = lock.clone();
-                lock.add_welcome_cmd(Help {
+                lock.add_welcome_cmd(HelpCmd {
                     command_handler: command_handler_clone,
                 });
                 let command_handler_clone = lock.clone();
-                lock.add_message_cmd(Help {
+                lock.add_message_cmd(HelpCmd {
                     command_handler: command_handler_clone,
                 });
             }
