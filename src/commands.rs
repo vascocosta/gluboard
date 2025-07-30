@@ -1,10 +1,11 @@
 use std::{collections::HashMap, sync::Arc};
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Error, Result};
 use async_trait::async_trait;
 use bcrypt::DEFAULT_COST;
+use tokio::io::AsyncWriteExt;
 
-use crate::session::{AppStateKind, LoginStatus, Message, Session, User};
+use crate::session::{AppStateKind, Message, Session, SessionStatus, User};
 
 #[derive(Clone)]
 pub struct CommandHandler {
@@ -52,21 +53,26 @@ impl CommandHandler {
         let name = parts.next().context("Invalid command")?;
         let args: Vec<&str> = parts.collect();
 
-        match session.login_status {
-            LoginStatus::Failure => {
+        match session.status {
+            SessionStatus::LoggedOff => {
                 self.welcome_commands
                     .get(name)
                     .context("Unknown command")?
                     .execute(session, if args.is_empty() { None } else { Some(&args) })
                     .await
             }
-            LoginStatus::Success(_) => {
+            SessionStatus::LoggedOn(_) => {
                 self.message_commands
                     .get(name)
                     .context("Unknown command")?
                     .execute(session, if args.is_empty() { None } else { Some(&args) })
                     .await
             }
+            SessionStatus::Disconnected => session
+                .stream
+                .shutdown()
+                .await
+                .context("Could not disconnect"),
         }
     }
 }
@@ -107,10 +113,10 @@ impl Command for LoginCmd {
             };
 
             if !valid_password {
-                session.login_status = LoginStatus::Failure;
+                session.status = SessionStatus::LoggedOff;
                 session.writeln("Login failed", None).await?;
             } else {
-                session.login_status = LoginStatus::Success(username);
+                session.status = SessionStatus::LoggedOn(username);
                 session.writeln("Login successful", None).await?;
                 break;
             }
@@ -153,7 +159,7 @@ impl Command for RegisterCmd {
 
         session.app_state.users.write().await.push(user);
         session.app_state.save(AppStateKind::Users).await?;
-        session.login_status = LoginStatus::Success(username);
+        session.status = SessionStatus::LoggedOn(username);
         session.writeln("Registration successful", None).await?;
         session.writeln("Login successful", None).await?;
 
@@ -219,9 +225,14 @@ impl Command for MessageCmd {
                         }
                     }
 
-                    let username = match &session.login_status {
-                        LoginStatus::Success(username) => username.to_owned(),
-                        LoginStatus::Failure => todo!(),
+                    let username = match &session.status {
+                        SessionStatus::LoggedOn(username) => username.to_owned(),
+                        SessionStatus::LoggedOff => {
+                            return Err(Error::msg("User is not logged in"));
+                        }
+                        SessionStatus::Disconnected => {
+                            return Err(Error::msg("User is disconnected"));
+                        }
                     };
 
                     let message = Message {
@@ -296,5 +307,24 @@ impl Command for HelpCmd {
 
     fn help(&self) -> String {
         String::from("This command shows a message help for each command.")
+    }
+}
+
+pub struct QuitCmd;
+
+#[async_trait]
+impl Command for QuitCmd {
+    fn names() -> &'static [&'static str] {
+        &["quit", "exit", "bye"]
+    }
+
+    async fn execute(&self, session: &mut Session, _: Option<&[&str]>) -> Result<()> {
+        session.status = SessionStatus::Disconnected;
+
+        Ok(())
+    }
+
+    fn help(&self) -> String {
+        String::from("This command terminates your session.")
     }
 }

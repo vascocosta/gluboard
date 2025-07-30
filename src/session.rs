@@ -15,10 +15,10 @@ const USERS_FILE: &str = "users.json";
 const MESSAGES_FILE: &str = "messages.json";
 
 pub struct Session {
-    stream: BufReader<TcpStream>,
+    pub stream: BufReader<TcpStream>,
     config: Arc<Config>,
     pub app_state: Arc<AppState>,
-    pub login_status: LoginStatus,
+    pub status: SessionStatus,
     command_handler: Arc<Mutex<CommandHandler>>,
 }
 
@@ -33,7 +33,7 @@ impl Session {
             stream: BufReader::new(stream),
             config,
             app_state,
-            login_status: LoginStatus::Failure,
+            status: SessionStatus::LoggedOff,
             command_handler,
         }
     }
@@ -48,34 +48,6 @@ impl Session {
     }
 
     pub async fn run(&mut self) -> Result<()> {
-        self.welcome().await.context("Could not perform welcome")?;
-
-        let command_handler = Arc::clone(&self.command_handler);
-
-        loop {
-            let raw_command = self.prompt("> ", None).await?;
-            command_handler
-                .lock()
-                .await
-                .handle(&raw_command, self)
-                .await?;
-        }
-    }
-
-    async fn send(&mut self, data: &str, newline: bool) -> Result<()> {
-        self.stream
-            .get_mut()
-            .write_all(format!("{data}{}", if newline { "\r\n" } else { "" }).as_bytes())
-            .await
-            .context("Could not send data to client")?;
-
-        self.stream
-            .flush()
-            .await
-            .context("Could not send data to client")
-    }
-
-    pub async fn welcome(&mut self) -> Result<()> {
         if let Some(banner_file) = &self.config.banner_file {
             if let Ok(banner_data) = read(banner_file).await {
                 self.writeln(&String::from_utf8_lossy(&banner_data), None)
@@ -109,15 +81,35 @@ impl Session {
         loop {
             let raw_command = self.prompt("> ", None).await?;
 
-            if let Err(e) = command_handler
+            match command_handler
                 .lock()
                 .await
                 .handle(&raw_command, self)
                 .await
             {
-                self.writeln(&format!("{e}"), None).await?
+                Ok(_) => {
+                    if let SessionStatus::Disconnected = self.status {
+                        break;
+                    }
+                }
+                Err(e) => self.writeln(&format!("{e}"), None).await?,
             }
         }
+
+        Ok(())
+    }
+
+    async fn send(&mut self, data: &str, newline: bool) -> Result<()> {
+        self.stream
+            .get_mut()
+            .write_all(format!("{data}{}", if newline { "\r\n" } else { "" }).as_bytes())
+            .await
+            .context("Could not send data to client")?;
+
+        self.stream
+            .flush()
+            .await
+            .context("Could not send data to client")
     }
 
     pub async fn write(&mut self, data: &str, style: Option<AnsiStyle>) -> Result<()> {
@@ -200,9 +192,10 @@ pub struct Message {
 }
 
 #[derive(Debug)]
-pub enum LoginStatus {
-    Success(String),
-    Failure,
+pub enum SessionStatus {
+    LoggedOn(String),
+    LoggedOff,
+    Disconnected,
 }
 
 pub enum AppStateKind {
